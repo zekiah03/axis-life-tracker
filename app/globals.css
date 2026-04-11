@@ -32,6 +32,8 @@
   --money: #22d3a0;
   --workout: #f97316;
   --food: #a78bfa;
+  --sleep: #60a5fa;
+  --body: #ec4899;
 }
 
 @theme inline {
@@ -68,6 +70,8 @@
   --color-money: var(--money);
   --color-workout: var(--workout);
   --color-food: var(--food);
+  --color-sleep: var(--sleep);
+  --color-body: var(--body);
 }
 
 @layer base {
@@ -76,5 +80,15 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

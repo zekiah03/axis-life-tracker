@@ -9,8 +9,10 @@ import { DashboardTab } from '@/components/axis/tabs/dashboard-tab'
 import { MoneyTab } from '@/components/axis/tabs/money-tab'
 import { WorkoutTab } from '@/components/axis/tabs/workout-tab'
 import { FoodTab } from '@/components/axis/tabs/food-tab'
+import { SleepTab } from '@/components/axis/tabs/sleep-tab'
+import { BodyTab } from '@/components/axis/tabs/body-tab'
 import { useLocalStorage } from '@/hooks/use-local-storage'
-import type { TabType, Transaction, WorkoutEntry, FoodEntry } from '@/lib/types'
+import type { TabType, Transaction, WorkoutEntry, FoodEntry, SleepEntry, BodyEntry } from '@/lib/types'
 
 export default function AxisApp() {
   const [activeTab, setActiveTab] = useState<TabType>('home')
@@ -23,6 +25,8 @@ export default function AxisApp() {
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('axis-transactions', [])
   const [workouts, setWorkouts] = useLocalStorage<WorkoutEntry[]>('axis-workouts', [])
   const [foods, setFoods] = useLocalStorage<FoodEntry[]>('axis-foods', [])
+  const [sleeps, setSleeps] = useLocalStorage<SleepEntry[]>('axis-sleeps', [])
+  const [bodies, setBodies] = useLocalStorage<BodyEntry[]>('axis-bodies', [])
 
   // Reset scroll on tab change
   useEffect(() => {
@@ -85,6 +89,38 @@ export default function AxisApp() {
     showToast('食事を削除しました', 'bg-destructive')
   }, [setFoods, showToast])
 
+  // Sleep handlers
+  const handleAddSleep = useCallback((data: Omit<SleepEntry, 'id' | 'createdAt'>) => {
+    const newSleep: SleepEntry = {
+      ...data,
+      id: crypto.randomUUID(),
+      createdAt: Date.now(),
+    }
+    setSleeps(prev => [...prev, newSleep])
+    showToast('睡眠を記録しました', 'bg-sleep')
+  }, [setSleeps, showToast])
+
+  const handleDeleteSleep = useCallback((id: string) => {
+    setSleeps(prev => prev.filter(s => s.id !== id))
+    showToast('睡眠を削除しました', 'bg-destructive')
+  }, [setSleeps, showToast])
+
+  // Body handlers
+  const handleAddBody = useCallback((data: Omit<BodyEntry, 'id' | 'createdAt'>) => {
+    const newBody: BodyEntry = {
+      ...data,
+      id: crypto.randomUUID(),
+      createdAt: Date.now(),
+    }
+    setBodies(prev => [...prev, newBody])
+    showToast('体組成を記録しました', 'bg-body')
+  }, [setBodies, showToast])
+
+  const handleDeleteBody = useCallback((id: string) => {
+    setBodies(prev => prev.filter(b => b.id !== id))
+    showToast('体組成を削除しました', 'bg-destructive')
+  }, [setBodies, showToast])
+
   // Search handlers
   const handleSelectFoodDB = useCallback((foodName: string) => {
     setPrefilledFood(foodName)
@@ -146,6 +182,22 @@ export default function AxisApp() {
             onDeleteFood={handleDeleteFood}
             prefilledFood={prefilledFood}
             onClearPrefill={handleClearPrefill}
+          />
+        )}
+
+        {activeTab === 'sleep' && (
+          <SleepTab
+            sleeps={sleeps}
+            onAddSleep={handleAddSleep}
+            onDeleteSleep={handleDeleteSleep}
+          />
+        )}
+
+        {activeTab === 'body' && (
+          <BodyTab
+            bodies={bodies}
+            onAddBody={handleAddBody}
+            onDeleteBody={handleDeleteBody}
           />
         )}
       </main>
