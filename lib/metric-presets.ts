@@ -1,0 +1,224 @@
+import type { MetricDefinition, MetricAggregation } from './types'
+
+// プリセットは「追加する時のテンプレート」。追加後は MetricDefinition として保存される。
+export interface MetricPreset {
+  name: string
+  unit: string
+  icon: string
+  color: string
+  aggregation: MetricAggregation
+  target?: number
+  minValue?: number
+  maxValue?: number
+  step?: number
+  category: '健康' | '運動' | 'メンタル' | '習慣' | '嗜好品'
+  description: string
+}
+
+export const metricPresets: MetricPreset[] = [
+  // 健康・バイタル
+  {
+    name: '歩数',
+    unit: '歩',
+    icon: 'Footprints',
+    color: '#22d3a0',
+    aggregation: 'sum',
+    target: 8000,
+    step: 100,
+    category: '健康',
+    description: '日次の歩数',
+  },
+  {
+    name: '水分摂取',
+    unit: 'ml',
+    icon: 'Droplet',
+    color: '#60a5fa',
+    aggregation: 'sum',
+    target: 2000,
+    step: 100,
+    category: '健康',
+    description: '1日の水分摂取量',
+  },
+  {
+    name: '心拍数',
+    unit: 'bpm',
+    icon: 'Heart',
+    color: '#ec4899',
+    aggregation: 'latest',
+    step: 1,
+    category: '健康',
+    description: '安静時心拍数',
+  },
+  {
+    name: '体温',
+    unit: '℃',
+    icon: 'Thermometer',
+    color: '#f97316',
+    aggregation: 'latest',
+    step: 0.1,
+    category: '健康',
+    description: '体温',
+  },
+  {
+    name: 'SpO2',
+    unit: '%',
+    icon: 'Activity',
+    color: '#a78bfa',
+    aggregation: 'latest',
+    step: 1,
+    minValue: 0,
+    maxValue: 100,
+    category: '健康',
+    description: '血中酸素飽和度',
+  },
+
+  // 運動
+  {
+    name: '有酸素運動',
+    unit: '分',
+    icon: 'Zap',
+    color: '#f97316',
+    aggregation: 'sum',
+    step: 5,
+    category: '運動',
+    description: 'ランニング・サイクリングなどの時間',
+  },
+  {
+    name: '消費カロリー',
+    unit: 'kcal',
+    icon: 'Flame',
+    color: '#f97316',
+    aggregation: 'sum',
+    step: 10,
+    category: '運動',
+    description: '運動での消費カロリー',
+  },
+  {
+    name: 'ストレッチ',
+    unit: '分',
+    icon: 'StretchHorizontal',
+    color: '#22d3a0',
+    aggregation: 'sum',
+    step: 1,
+    category: '運動',
+    description: '柔軟・ストレッチ時間',
+  },
+
+  // メンタル (1-10スケール)
+  {
+    name: '気分',
+    unit: '点',
+    icon: 'Smile',
+    color: '#22d3a0',
+    aggregation: 'average',
+    minValue: 1,
+    maxValue: 10,
+    step: 1,
+    category: 'メンタル',
+    description: '今日の気分スコア',
+  },
+  {
+    name: 'ストレス',
+    unit: '点',
+    icon: 'Wind',
+    color: '#ec4899',
+    aggregation: 'average',
+    minValue: 1,
+    maxValue: 10,
+    step: 1,
+    category: 'メンタル',
+    description: 'ストレスレベル',
+  },
+  {
+    name: 'エネルギー',
+    unit: '点',
+    icon: 'BatteryCharging',
+    color: '#facc15',
+    aggregation: 'average',
+    minValue: 1,
+    maxValue: 10,
+    step: 1,
+    category: 'メンタル',
+    description: '活力・元気度',
+  },
+  {
+    name: '集中力',
+    unit: '点',
+    icon: 'Target',
+    color: '#60a5fa',
+    aggregation: 'average',
+    minValue: 1,
+    maxValue: 10,
+    step: 1,
+    category: 'メンタル',
+    description: '集中できた度合い',
+  },
+
+  // 習慣
+  {
+    name: '勉強',
+    unit: '分',
+    icon: 'BookOpen',
+    color: '#a78bfa',
+    aggregation: 'sum',
+    target: 60,
+    step: 5,
+    category: '習慣',
+    description: '学習時間',
+  },
+  {
+    name: '読書',
+    unit: 'ページ',
+    icon: 'Book',
+    color: '#a78bfa',
+    aggregation: 'sum',
+    step: 1,
+    category: '習慣',
+    description: '読んだページ数',
+  },
+  {
+    name: '瞑想',
+    unit: '分',
+    icon: 'Sparkles',
+    color: '#60a5fa',
+    aggregation: 'sum',
+    target: 10,
+    step: 1,
+    category: '習慣',
+    description: '瞑想・マインドフルネス',
+  },
+  {
+    name: 'スクリーンタイム',
+    unit: '時間',
+    icon: 'Smartphone',
+    color: '#71717a',
+    aggregation: 'sum',
+    step: 0.5,
+    category: '習慣',
+    description: '画面視聴時間',
+  },
+
+  // 嗜好品
+  {
+    name: 'カフェイン',
+    unit: 'mg',
+    icon: 'Coffee',
+    color: '#a16207',
+    aggregation: 'sum',
+    step: 50,
+    category: '嗜好品',
+    description: 'カフェイン摂取量',
+  },
+  {
+    name: 'アルコール',
+    unit: 'g',
+    icon: 'Wine',
+    color: '#dc2626',
+    aggregation: 'sum',
+    step: 1,
+    category: '嗜好品',
+    description: '純アルコール量',
+  },
+]
+
+export const metricCategories = ['健康', '運動', 'メンタル', '習慣', '嗜好品'] as const

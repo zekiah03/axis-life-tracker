@@ -11,8 +11,18 @@ import { WorkoutTab } from '@/components/axis/tabs/workout-tab'
 import { FoodTab } from '@/components/axis/tabs/food-tab'
 import { SleepTab } from '@/components/axis/tabs/sleep-tab'
 import { BodyTab } from '@/components/axis/tabs/body-tab'
+import { MetricsTab } from '@/components/axis/tabs/metrics-tab'
 import { useLocalStorage } from '@/hooks/use-local-storage'
-import type { TabType, Transaction, WorkoutEntry, FoodEntry, SleepEntry, BodyEntry } from '@/lib/types'
+import type {
+  TabType,
+  Transaction,
+  WorkoutEntry,
+  FoodEntry,
+  SleepEntry,
+  BodyEntry,
+  MetricDefinition,
+  MetricEntry,
+} from '@/lib/types'
 
 export default function AxisApp() {
   const [activeTab, setActiveTab] = useState<TabType>('home')
@@ -27,6 +37,8 @@ export default function AxisApp() {
   const [foods, setFoods] = useLocalStorage<FoodEntry[]>('axis-foods', [])
   const [sleeps, setSleeps] = useLocalStorage<SleepEntry[]>('axis-sleeps', [])
   const [bodies, setBodies] = useLocalStorage<BodyEntry[]>('axis-bodies', [])
+  const [metrics, setMetrics] = useLocalStorage<MetricDefinition[]>('axis-metrics', [])
+  const [metricEntries, setMetricEntries] = useLocalStorage<MetricEntry[]>('axis-metric-entries', [])
 
   // Reset scroll on tab change
   useEffect(() => {
@@ -121,6 +133,37 @@ export default function AxisApp() {
     showToast('体組成を削除しました', 'bg-destructive')
   }, [setBodies, showToast])
 
+  // Metrics handlers
+  const handleAddMetric = useCallback((data: Omit<MetricDefinition, 'id' | 'createdAt'>) => {
+    const newMetric: MetricDefinition = {
+      ...data,
+      id: crypto.randomUUID(),
+      createdAt: Date.now(),
+    }
+    setMetrics(prev => [...prev, newMetric])
+    showToast(`${data.name}を追加しました`, 'bg-foreground')
+  }, [setMetrics, showToast])
+
+  const handleDeleteMetric = useCallback((id: string) => {
+    setMetrics(prev => prev.filter(m => m.id !== id))
+    setMetricEntries(prev => prev.filter(e => e.metricId !== id))
+    showToast('項目を削除しました', 'bg-destructive')
+  }, [setMetrics, setMetricEntries, showToast])
+
+  const handleAddMetricEntry = useCallback((data: Omit<MetricEntry, 'id' | 'createdAt'>) => {
+    const newEntry: MetricEntry = {
+      ...data,
+      id: crypto.randomUUID(),
+      createdAt: Date.now(),
+    }
+    setMetricEntries(prev => [...prev, newEntry])
+    showToast('記録しました', 'bg-foreground')
+  }, [setMetricEntries, showToast])
+
+  const handleDeleteMetricEntry = useCallback((id: string) => {
+    setMetricEntries(prev => prev.filter(e => e.id !== id))
+  }, [setMetricEntries])
+
   // Search handlers
   const handleSelectFoodDB = useCallback((foodName: string) => {
     setPrefilledFood(foodName)
@@ -198,6 +241,17 @@ export default function AxisApp() {
             bodies={bodies}
             onAddBody={handleAddBody}
             onDeleteBody={handleDeleteBody}
+          />
+        )}
+
+        {activeTab === 'metrics' && (
+          <MetricsTab
+            metrics={metrics}
+            metricEntries={metricEntries}
+            onAddMetric={handleAddMetric}
+            onDeleteMetric={handleDeleteMetric}
+            onAddEntry={handleAddMetricEntry}
+            onDeleteEntry={handleDeleteMetricEntry}
           />
         )}
       </main>

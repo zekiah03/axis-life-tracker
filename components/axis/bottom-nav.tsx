@@ -1,6 +1,6 @@
 'use client'
 
-import { Home, Wallet, Dumbbell, Utensils, Moon, Scale } from 'lucide-react'
+import { Home, Wallet, Dumbbell, Utensils, Moon, Scale, LineChart } from 'lucide-react'
 import type { TabType } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +16,7 @@ const tabs: { id: TabType; label: string; icon: typeof Home; color: string; indi
   { id: 'food', label: '食事', icon: Utensils, color: 'text-food', indicatorColor: 'bg-food' },
   { id: 'sleep', label: '睡眠', icon: Moon, color: 'text-sleep', indicatorColor: 'bg-sleep' },
   { id: 'body', label: '体組成', icon: Scale, color: 'text-body', indicatorColor: 'bg-body' },
+  { id: 'metrics', label: '数値', icon: LineChart, color: 'text-foreground', indicatorColor: 'bg-foreground' },
 ]
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
