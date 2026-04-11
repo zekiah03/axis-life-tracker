@@ -1,17 +1,59 @@
 'use client'
 
+import * as Icons from 'lucide-react'
 import { Wallet, Dumbbell, Utensils, TrendingUp, TrendingDown } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import type { Transaction, WorkoutEntry, FoodEntry } from '@/lib/types'
+import type {
+  Transaction,
+  WorkoutEntry,
+  FoodEntry,
+  MetricDefinition,
+  MetricEntry,
+} from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface DashboardTabProps {
   transactions: Transaction[]
   workouts: WorkoutEntry[]
   foods: FoodEntry[]
+  metrics: MetricDefinition[]
+  metricEntries: MetricEntry[]
+  onNavigateToMetrics?: () => void
 }
 
-export function DashboardTab({ transactions, workouts, foods }: DashboardTabProps) {
+function getIcon(name: string): React.ComponentType<{ className?: string }> {
+  const IconComp = (Icons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[name]
+  return IconComp || Icons.Circle
+}
+
+function computeTodayMetricValue(metric: MetricDefinition, entries: MetricEntry[]): number {
+  const today = new Date().toISOString().split('T')[0]
+  const todayEntries = entries.filter(e => e.metricId === metric.id && e.date === today)
+  if (todayEntries.length === 0) return 0
+  switch (metric.aggregation) {
+    case 'sum':
+      return todayEntries.reduce((sum, e) => sum + e.value, 0)
+    case 'average':
+      return todayEntries.reduce((sum, e) => sum + e.value, 0) / todayEntries.length
+    case 'latest':
+      return todayEntries.sort((a, b) => b.createdAt - a.createdAt)[0].value
+  }
+}
+
+function formatValue(value: number, step: number = 1): string {
+  if (step >= 1) return Math.round(value).toString()
+  if (step >= 0.1) return value.toFixed(1)
+  return value.toFixed(2)
+}
+
+export function DashboardTab({
+  transactions,
+  workouts,
+  foods,
+  metrics,
+  metricEntries,
+  onNavigateToMetrics,
+}: DashboardTabProps) {
   const today = new Date().toISOString().split('T')[0]
   
   // Calculate monthly balance
@@ -124,6 +166,60 @@ export function DashboardTab({ transactions, workouts, foods }: DashboardTabProp
           </div>
         </CardContent>
       </Card>
+
+      {/* 今日のメトリクス進捗 */}
+      {metrics.length > 0 && (
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-muted-foreground">今日の数値</h3>
+              {onNavigateToMetrics && (
+                <button
+                  type="button"
+                  onClick={onNavigateToMetrics}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  詳細 →
+                </button>
+              )}
+            </div>
+            <div className="space-y-3">
+              {metrics.map((metric) => {
+                const Icon = getIcon(metric.icon)
+                const value = computeTodayMetricValue(metric, metricEntries)
+                const progress =
+                  metric.target && metric.target > 0
+                    ? Math.min(100, (value / metric.target) * 100)
+                    : null
+                return (
+                  <div key={metric.id} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Icon className="h-4 w-4 shrink-0" style={{ color: metric.color }} />
+                        <span className="text-muted-foreground truncate">{metric.name}</span>
+                      </div>
+                      <span className="text-foreground shrink-0 ml-2">
+                        <span className="font-medium" style={{ color: metric.color }}>
+                          {formatValue(value, metric.step)}
+                        </span>
+                        {metric.target ? ` / ${metric.target}` : ''} {metric.unit}
+                      </span>
+                    </div>
+                    {progress !== null && (
+                      <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${progress}%`, backgroundColor: metric.color }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Transactions */}
       <Card className="bg-card border-border">

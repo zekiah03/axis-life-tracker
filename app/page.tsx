@@ -12,6 +12,7 @@ import { FoodTab } from '@/components/axis/tabs/food-tab'
 import { SleepTab } from '@/components/axis/tabs/sleep-tab'
 import { BodyTab } from '@/components/axis/tabs/body-tab'
 import { MetricsTab } from '@/components/axis/tabs/metrics-tab'
+import { TabSettingsDialog } from '@/components/axis/tab-settings-dialog'
 import { useLocalStorage } from '@/hooks/use-local-storage'
 import type {
   TabType,
@@ -22,11 +23,14 @@ import type {
   BodyEntry,
   MetricDefinition,
   MetricEntry,
+  TabConfig,
 } from '@/lib/types'
+import { defaultTabConfig } from '@/lib/types'
 
 export default function AxisApp() {
   const [activeTab, setActiveTab] = useState<TabType>('home')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [prefilledFood, setPrefilledFood] = useState<string | undefined>()
   const [toast, setToast] = useState({ message: '', visible: false, color: 'bg-foreground' })
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -39,6 +43,25 @@ export default function AxisApp() {
   const [bodies, setBodies] = useLocalStorage<BodyEntry[]>('axis-bodies', [])
   const [metrics, setMetrics] = useLocalStorage<MetricDefinition[]>('axis-metrics', [])
   const [metricEntries, setMetricEntries] = useLocalStorage<MetricEntry[]>('axis-metric-entries', [])
+  const [tabConfig, setTabConfig] = useLocalStorage<TabConfig[]>('axis-tab-config', defaultTabConfig)
+
+  // 過去バージョンで保存された config に新タブが未登録なら追加する(互換性)
+  useEffect(() => {
+    const known = new Set(tabConfig.map(c => c.id))
+    const missing = defaultTabConfig.filter(c => !known.has(c.id))
+    if (missing.length > 0) {
+      setTabConfig([...tabConfig, ...missing])
+    }
+  }, [tabConfig, setTabConfig])
+
+  // 非表示タブをアクティブにした状態で config が変わったら home に戻す
+  useEffect(() => {
+    if (activeTab === 'home') return
+    const conf = tabConfig.find(c => c.id === activeTab)
+    if (conf && !conf.visible) {
+      setActiveTab('home')
+    }
+  }, [tabConfig, activeTab])
 
   // Reset scroll on tab change
   useEffect(() => {
@@ -188,6 +211,7 @@ export default function AxisApp() {
       <TopBar
         onSearchClick={() => setIsSearchOpen(true)}
         onAddClick={handleAddClick}
+        onSettingsClick={() => setIsSettingsOpen(true)}
       />
 
       <main
@@ -199,6 +223,9 @@ export default function AxisApp() {
             transactions={transactions}
             workouts={workouts}
             foods={foods}
+            metrics={metrics}
+            metricEntries={metricEntries}
+            onNavigateToMetrics={() => setActiveTab('metrics')}
           />
         )}
 
@@ -256,7 +283,14 @@ export default function AxisApp() {
         )}
       </main>
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} tabConfig={tabConfig} />
+
+      <TabSettingsDialog
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        tabConfig={tabConfig}
+        onChange={setTabConfig}
+      />
 
       <SearchOverlay
         isOpen={isSearchOpen}

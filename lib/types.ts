@@ -82,5 +82,24 @@ export interface MetricEntry {
 
 export type TabType = 'home' | 'money' | 'workout' | 'food' | 'sleep' | 'body' | 'metrics'
 
+// Home 以外のタブの表示順・表示/非表示設定
+export type NonHomeTabType = Exclude<TabType, 'home'>
+
+export interface TabConfig {
+  id: NonHomeTabType
+  visible: boolean
+}
+
+export const defaultTabOrder: NonHomeTabType[] = [
+  'money',
+  'workout',
+  'food',
+  'sleep',
+  'body',
+  'metrics',
+]
+
+export const defaultTabConfig: TabConfig[] = defaultTabOrder.map(id => ({ id, visible: true }))
+
 export const incomeCategories = ['給料', '副業', '投資', 'ボーナス', 'その他']
 export const expenseCategories = ['食費', '交通費', '住居費', '光熱費', '通信費', '娯楽', '医療費', '衣服', '教育', 'その他']
