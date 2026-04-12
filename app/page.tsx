@@ -6,6 +6,14 @@ import { BottomNav } from '@/components/axis/bottom-nav'
 import { SearchOverlay } from '@/components/axis/search-overlay'
 import { ToastNotification } from '@/components/axis/toast-notification'
 import { OnboardingScreen } from '@/components/axis/onboarding-screen'
+import { ReminderSettingsDialog } from '@/components/axis/reminder-settings-dialog'
+import { I18nContext, translations, type Locale } from '@/lib/i18n'
+import {
+  DEFAULT_REMINDER_CONFIG,
+  startDailyReminderCheck,
+  stopDailyReminderCheck,
+  type ReminderConfig,
+} from '@/lib/notifications'
 import { DashboardTab } from '@/components/axis/tabs/dashboard-tab'
 import { MoneyTab } from '@/components/axis/tabs/money-tab'
 import { WorkoutTab } from '@/components/axis/tabs/workout-tab'
@@ -47,6 +55,17 @@ export default function AxisApp() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isDataMgmtOpen, setIsDataMgmtOpen] = useState(false)
+  const [isReminderOpen, setIsReminderOpen] = useState(false)
+
+  // i18n
+  const [locale, setLocale] = useLocalStorage<Locale>('axis-locale', 'ja')
+  const t = translations[locale]
+
+  // Reminder config
+  const [reminderConfig, setReminderConfig] = useLocalStorage<ReminderConfig>(
+    'axis-reminders',
+    DEFAULT_REMINDER_CONFIG
+  )
   const [prefilledFood, setPrefilledFood] = useState<string | undefined>()
   const [toast, setToast] = useState({ message: '', visible: false, color: 'bg-foreground' })
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -198,6 +217,27 @@ export default function AxisApp() {
   useEffect(() => {
     scrollRef.current?.scrollTo(0, 0)
   }, [activeTab])
+
+  // Daily reminder scheduler
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0]
+    const hasRecordToday = () => {
+      // 今日のどれかのデータがあるか
+      return (
+        transactions.some(t => t.date === today) ||
+        foods.some(f => f.date === today) ||
+        workoutSessions.some(s => s.date === today) ||
+        sleeps.some(s => s.date === today) ||
+        bodies.some(b => b.date === today) ||
+        metricEntries.some(e => e.date === today)
+      )
+    }
+    startDailyReminderCheck(reminderConfig, hasRecordToday, {
+      title: t.notifications.reminderTitle,
+      body: t.notifications.reminderBody,
+    })
+    return () => stopDailyReminderCheck()
+  }, [reminderConfig, t, transactions, foods, workoutSessions, sleeps, bodies, metricEntries])
 
   const showToast = useCallback((message: string, color: string) => {
     setToast({ message, visible: true, color })
@@ -738,17 +778,28 @@ export default function AxisApp() {
     return metricEntries.filter(e => e.metricId === activeMetric.id)
   }, [activeMetric, metricEntries])
 
+  const i18nValue = useMemo(
+    () => ({ locale, t, setLocale }),
+    [locale, t, setLocale]
+  )
+
   // オンボーディング画面
   if (!onboarded) {
-    return <OnboardingScreen onComplete={handleOnboardingComplete} />
+    return (
+      <I18nContext.Provider value={i18nValue}>
+        <OnboardingScreen onComplete={handleOnboardingComplete} />
+      </I18nContext.Provider>
+    )
   }
 
   return (
-    <div className="flex min-h-screen max-w-[480px] mx-auto flex-col bg-background">
+    <I18nContext.Provider value={i18nValue}>
+      <div className="flex min-h-screen max-w-[480px] mx-auto flex-col bg-background">
       <TopBar
         onSearchClick={() => setIsSearchOpen(true)}
         onAddClick={handleAddClick}
         onSettingsClick={() => setIsSettingsOpen(true)}
+        onReminderClick={() => setIsReminderOpen(true)}
       />
 
       <main
@@ -883,12 +934,20 @@ export default function AxisApp() {
         onNavigateToTab={setActiveTab}
       />
 
+      <ReminderSettingsDialog
+        open={isReminderOpen}
+        onOpenChange={setIsReminderOpen}
+        config={reminderConfig}
+        onSave={setReminderConfig}
+      />
+
       <ToastNotification
         message={toast.message}
         isVisible={toast.visible}
         onClose={hideToast}
         color={toast.color}
       />
-    </div>
+      </div>
+    </I18nContext.Provider>
   )
 }
