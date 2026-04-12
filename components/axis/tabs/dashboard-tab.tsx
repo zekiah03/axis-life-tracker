@@ -28,6 +28,8 @@ import type {
   MetricDefinition,
   MetricEntry,
 } from '@/lib/types'
+import type { TabConfig } from '@/lib/types'
+import { isMetricTabId } from '@/lib/types'
 import type { WidgetConfig, WidgetId } from '@/lib/widgets'
 import { sessionVolume, sessionSetCount, weeklyVolume } from '@/lib/workout-stats'
 import { scoreLabel } from '@/lib/sleep-score'
@@ -46,6 +48,7 @@ interface DashboardTabProps {
   metrics: MetricDefinition[]
   metricEntries: MetricEntry[]
   widgetConfig: WidgetConfig[]
+  tabConfig: TabConfig[] // ユーザーが有効にしているタブ
   onWidgetConfigChange: (config: WidgetConfig[]) => void
   onNavigateToTab: (tab: string) => void
   onNavigateToMetric?: (metricId: string) => void
@@ -83,12 +86,34 @@ export function DashboardTab(props: DashboardTabProps) {
   const {
     transactions, workouts, workoutSessions, foods, foodGoal,
     sleeps, bodies, metrics, metricEntries,
-    widgetConfig, onWidgetConfigChange,
+    widgetConfig, tabConfig, onWidgetConfigChange,
     onNavigateToTab, onNavigateToMetric,
   } = props
 
   const { locale, t } = useI18n()
   const [editOpen, setEditOpen] = useState(false)
+
+  // ユーザーが有効にしているタブの組み込みIDセット
+  const enabledTabs = useMemo(() => {
+    const set = new Set<string>()
+    for (const tc of tabConfig) {
+      if (tc.visible) set.add(tc.id)
+    }
+    return set
+  }, [tabConfig])
+
+  // ウィジェットIDとタブIDのマッピング: そのウィジェットが関連するタブ
+  const widgetRequiresTab: Partial<Record<WidgetId, string>> = {
+    'money-summary': 'money',
+    'food-calories': 'food',
+    'food-pfc': 'food',
+    'workout-summary': 'workout',
+    'sleep-summary': 'sleep',
+    'body-latest': 'body',
+    'recent-transactions': 'money',
+    'recent-workouts': 'workout',
+  }
+  // 'metrics-today' と 'streak' はタブに依存しない(横断的)
 
   const today = new Date().toISOString().split('T')[0]
   const thisMonth = new Date().toISOString().slice(0, 7)
@@ -340,14 +365,16 @@ export function DashboardTab(props: DashboardTabProps) {
           </Card>
         )
 
-      case 'metrics-today':
-        if (metrics.length === 0) return null
+      case 'metrics-today': {
+        // タブに含まれているメトリクスだけ表示
+        const enabledMetrics = metrics.filter(m => enabledTabs.has(`metric:${m.id}`))
+        if (enabledMetrics.length === 0) return null
         return (
           <Card key={id} className="bg-card border-border">
             <CardContent className="p-4">
               <h3 className="mb-3 text-sm font-medium text-muted-foreground">{t.home.todayMetrics}</h3>
               <div className="space-y-2">
-                {metrics.map((metric) => {
+                {enabledMetrics.map((metric) => {
                   const Icon = getIcon(metric.icon)
                   const value = computeTodayMetricValue(metric, metricEntries)
                   const progress = metric.target && metric.target > 0
@@ -386,6 +413,7 @@ export function DashboardTab(props: DashboardTabProps) {
             </CardContent>
           </Card>
         )
+      }
 
       case 'streak':
         return (
@@ -492,9 +520,16 @@ export function DashboardTab(props: DashboardTabProps) {
         </Button>
       </div>
 
-      {/* ウィジェット一覧 */}
+      {/* ウィジェット一覧: visible かつ 対応タブが有効なもののみ */}
       {widgetConfig
-        .filter(w => w.visible)
+        .filter(w => {
+          if (!w.visible) return false
+          const requiredTab = widgetRequiresTab[w.id]
+          // タブ依存なし(streak, metrics-today)は常に表示
+          if (!requiredTab) return true
+          // 対応するタブがユーザーの有効タブに含まれているか
+          return enabledTabs.has(requiredTab)
+        })
         .map(w => renderWidget(w.id))}
 
       <WidgetEditDialog

@@ -905,6 +905,7 @@ export default function AxisApp() {
             metrics={metrics}
             metricEntries={metricEntries}
             widgetConfig={widgetConfig}
+            tabConfig={tabConfig}
             onWidgetConfigChange={setWidgetConfig}
             onNavigateToTab={(tab) => setActiveTab(tab as TabType)}
             onNavigateToMetric={(metricId) => setActiveTab(`metric:${metricId}`)}
