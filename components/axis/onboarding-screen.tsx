@@ -93,7 +93,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         </p>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4 pb-32 space-y-6">
+      <main className="flex-1 overflow-y-auto px-4 pb-40 space-y-6">
         {/* カテゴリ */}
         <section className="space-y-2">
           <h2 className="text-xs font-medium text-muted-foreground px-2">
@@ -177,8 +177,8 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
       </main>
 
       {/* 下部の確定バー */}
-      <footer className="fixed bottom-0 left-0 right-0 max-w-[480px] mx-auto p-4 bg-background/95 backdrop-blur-sm border-t border-border">
-        <div className="flex items-center justify-between mb-2 text-xs text-muted-foreground">
+      <footer className="fixed bottom-0 left-0 right-0 z-50 max-w-[480px] mx-auto p-4 pb-6 bg-background/95 backdrop-blur-sm border-t border-border">
+        <div className="flex items-center justify-between mb-3 text-xs text-muted-foreground">
           <span>選択中: {totalSelected} 項目</span>
           <button
             type="button"
@@ -194,7 +194,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         <Button
           type="button"
           onClick={handleComplete}
-          className="w-full bg-foreground text-background hover:bg-foreground/90 font-medium"
+          className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 font-medium text-base"
           disabled={totalSelected === 0}
         >
           {totalSelected === 0 ? '項目を選択してください' : '始める'}
