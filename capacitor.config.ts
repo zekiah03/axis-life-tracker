@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
   appId: 'biz.solnova.axis',
-  appName: 'AXIS',
+  appName: 'TeleLog',
   // webDir はリモート URL を使うので実質ダミー。cap init に必要
   webDir: 'public',
   server: {

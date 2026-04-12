@@ -28,7 +28,7 @@ export const en: TranslationKeys = {
     yen: 'JPY',
   },
   app: {
-    title: 'AXIS',
+    title: 'TeleLog',
     subtitle: 'Life Tracker',
   },
   onboarding: {
@@ -238,11 +238,11 @@ export const en: TranslationKeys = {
     goalAlert: 'Goal Achievement Alert',
     goalAlertDesc: 'When calorie or budget goals are reached',
     time: 'Notification Time',
-    reminderTitle: 'AXIS - Recording Reminder',
+    reminderTitle: 'TeleLog -Recording Reminder',
     reminderBody: "You haven't recorded anything today. Tap to start.",
-    goalAchievedTitle: 'AXIS - Goal Achieved!',
+    goalAchievedTitle: 'TeleLog -Goal Achieved!',
     calorieGoalBody: "You've reached today's calorie goal.",
-    budgetWarningTitle: 'AXIS - Budget Warning',
+    budgetWarningTitle: 'TeleLog -Budget Warning',
     budgetWarningBody: (cat: string) => `${cat} budget exceeded.`,
   },
   language: {

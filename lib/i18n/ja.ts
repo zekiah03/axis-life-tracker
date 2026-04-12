@@ -29,7 +29,7 @@ export const ja = {
 
   // App
   app: {
-    title: 'AXIS',
+    title: 'TeleLog',
     subtitle: 'Life Tracker',
   },
 
@@ -261,11 +261,11 @@ export const ja = {
     goalAlert: '目標達成通知',
     goalAlertDesc: 'カロリー・予算の目標に達したとき',
     time: '通知時刻',
-    reminderTitle: 'AXIS - 記録リマインダー',
+    reminderTitle: 'TeleLog -記録リマインダー',
     reminderBody: '今日の記録がまだありません。タップして記録しましょう。',
-    goalAchievedTitle: 'AXIS - 目標達成!',
+    goalAchievedTitle: 'TeleLog -目標達成!',
     calorieGoalBody: '今日のカロリー目標を達成しました。',
-    budgetWarningTitle: 'AXIS - 予算注意',
+    budgetWarningTitle: 'TeleLog -予算注意',
     budgetWarningBody: (cat: string) => `${cat}の予算を超えました。`,
   },
 
