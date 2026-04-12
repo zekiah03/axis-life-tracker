@@ -28,6 +28,8 @@ export interface Budget {
   amount: number
 }
 
+// 旧モデル (1エントリ=1種目の平均値)。新モデルへのマイグレーション完了後も
+// 既存データを見るために残す。
 export interface WorkoutEntry {
   id: string
   exercise: string
@@ -37,6 +39,36 @@ export interface WorkoutEntry {
   reps: number
   weight: number
   createdAt: number
+}
+
+// 新モデル (Strong/Hevy 準拠): セッション → 種目 → セット の階層
+export interface WorkoutSet {
+  id: string
+  weight: number // kg
+  reps: number
+  rpe?: number // 1-10 の主観強度 (任意)
+  completed: boolean // 完了チェック (アクティブセッション中に個別にチェック)
+  isWarmup?: boolean // ウォームアップセット
+  restSeconds?: number // このセット前の休憩時間 (計測用)
+}
+
+export interface SessionExercise {
+  id: string
+  exerciseName: string
+  muscleGroup: string
+  sets: WorkoutSet[]
+  notes?: string
+  order: number
+}
+
+export interface WorkoutSession {
+  id: string
+  date: string // YYYY-MM-DD
+  name?: string // 例: "Push Day A"
+  startedAt: number // UNIX ms
+  endedAt?: number // UNIX ms (アクティブ中は undefined)
+  exercises: SessionExercise[]
+  notes?: string
 }
 
 export interface FoodEntry {

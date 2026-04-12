@@ -19,6 +19,7 @@ import type {
   TabType,
   Transaction,
   WorkoutEntry,
+  WorkoutSession,
   FoodEntry,
   SleepEntry,
   BodyEntry,
@@ -49,6 +50,7 @@ export default function AxisApp() {
   const [moneyCategories, setMoneyCategories] = useLocalStorage<MoneyCategory[]>('axis-money-categories', [])
   const [budgets, setBudgets] = useLocalStorage<Budget[]>('axis-budgets', [])
   const [workouts, setWorkouts] = useLocalStorage<WorkoutEntry[]>('axis-workouts', [])
+  const [workoutSessions, setWorkoutSessions] = useLocalStorage<WorkoutSession[]>('axis-workout-sessions', [])
   const [foods, setFoods] = useLocalStorage<FoodEntry[]>('axis-foods', [])
   const [sleeps, setSleeps] = useLocalStorage<SleepEntry[]>('axis-sleeps', [])
   const [bodies, setBodies] = useLocalStorage<BodyEntry[]>('axis-bodies', [])
@@ -310,6 +312,38 @@ export default function AxisApp() {
     setWorkouts(prev => prev.filter(w => w.id !== id))
     showToast('ワークアウトを削除しました', 'bg-destructive')
   }, [setWorkouts, showToast])
+
+  // WorkoutSession handlers (Strong/Hevy 型の新モデル)
+  const handleStartWorkoutSession = useCallback((): WorkoutSession => {
+    const now = Date.now()
+    const session: WorkoutSession = {
+      id: crypto.randomUUID(),
+      date: new Date().toISOString().split('T')[0],
+      startedAt: now,
+      exercises: [],
+    }
+    setWorkoutSessions(prev => [...prev, session])
+    return session
+  }, [setWorkoutSessions])
+
+  const handleUpdateWorkoutSession = useCallback((next: WorkoutSession) => {
+    setWorkoutSessions(prev => prev.map(s => (s.id === next.id ? next : s)))
+  }, [setWorkoutSessions])
+
+  const handleFinishWorkoutSession = useCallback((next: WorkoutSession) => {
+    setWorkoutSessions(prev => prev.map(s => (s.id === next.id ? next : s)))
+    showToast('ワークアウト完了!', 'bg-workout')
+  }, [setWorkoutSessions, showToast])
+
+  const handleCancelWorkoutSession = useCallback((id: string) => {
+    setWorkoutSessions(prev => prev.filter(s => s.id !== id))
+    showToast('ワークアウトを破棄しました', 'bg-destructive')
+  }, [setWorkoutSessions, showToast])
+
+  const handleDeleteWorkoutSession = useCallback((id: string) => {
+    setWorkoutSessions(prev => prev.filter(s => s.id !== id))
+    showToast('セッションを削除しました', 'bg-destructive')
+  }, [setWorkoutSessions, showToast])
 
   // Food handlers
   const handleAddFood = useCallback((data: Omit<FoodEntry, 'id' | 'createdAt'>) => {
@@ -641,9 +675,14 @@ export default function AxisApp() {
 
         {activeTab === 'workout' && (
           <WorkoutTab
-            workouts={workouts}
-            onAddWorkout={handleAddWorkout}
-            onDeleteWorkout={handleDeleteWorkout}
+            sessions={workoutSessions}
+            legacyEntries={workouts}
+            onStartSession={handleStartWorkoutSession}
+            onUpdateSession={handleUpdateWorkoutSession}
+            onFinishSession={handleFinishWorkoutSession}
+            onCancelSession={handleCancelWorkoutSession}
+            onDeleteSession={handleDeleteWorkoutSession}
+            onDeleteLegacy={handleDeleteWorkout}
           />
         )}
 
