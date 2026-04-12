@@ -26,12 +26,15 @@ import type {
   MetricEntry,
   TabConfig,
   BuiltinTabId,
+  MoneyCategory,
+  Budget,
 } from '@/lib/types'
 import { isMetricTabId, getMetricIdFromTabId } from '@/lib/types'
 import type { MetricPreset } from '@/lib/metric-presets'
 import { fetchDailyValues, fetchSleepSessions } from '@/lib/native-health'
 import { metricPresets } from '@/lib/metric-presets'
 import { computeSleepScore } from '@/lib/sleep-score'
+import { allDefaultCategories } from '@/lib/money-categories'
 
 export default function AxisApp() {
   const [activeTab, setActiveTab] = useState<TabType>('home')
@@ -43,6 +46,8 @@ export default function AxisApp() {
 
   // Data storage
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('axis-transactions', [])
+  const [moneyCategories, setMoneyCategories] = useLocalStorage<MoneyCategory[]>('axis-money-categories', [])
+  const [budgets, setBudgets] = useLocalStorage<Budget[]>('axis-budgets', [])
   const [workouts, setWorkouts] = useLocalStorage<WorkoutEntry[]>('axis-workouts', [])
   const [foods, setFoods] = useLocalStorage<FoodEntry[]>('axis-foods', [])
   const [sleeps, setSleeps] = useLocalStorage<SleepEntry[]>('axis-sleeps', [])
@@ -53,6 +58,34 @@ export default function AxisApp() {
   // v2 タブ設定 (組み込み + metric:id の統一形式)
   const [tabConfig, setTabConfig] = useLocalStorage<TabConfig[]>('axis-tab-config-v2', [])
   const [onboarded, setOnboarded] = useLocalStorage<boolean>('axis-onboarded', false)
+
+  // 家計簿カテゴリの初期投入 (初回 or 空の場合)
+  useEffect(() => {
+    if (moneyCategories.length > 0) return
+    const now = Date.now()
+    const initial: MoneyCategory[] = allDefaultCategories.map((c, i) => ({
+      ...c,
+      id: `cat-${now}-${i}`,
+    }))
+    setMoneyCategories(initial)
+  }, [moneyCategories.length, setMoneyCategories])
+
+  // 既存取引に categoryId を後付け (名前マッチで補完)
+  useEffect(() => {
+    if (moneyCategories.length === 0) return
+    const byName = new Map(moneyCategories.map(c => [c.name, c.id]))
+    let changed = false
+    const updated = transactions.map(t => {
+      if (t.categoryId) return t
+      const id = byName.get(t.category)
+      if (id) {
+        changed = true
+        return { ...t, categoryId: id }
+      }
+      return t
+    })
+    if (changed) setTransactions(updated)
+  }, [moneyCategories, transactions, setTransactions])
 
   // 既存メトリクスに healthSource / multiplier を後付けで補完
   useEffect(() => {
@@ -173,6 +206,94 @@ export default function AxisApp() {
     setTransactions(prev => prev.filter(t => t.id !== id))
     showToast('取引を削除しました', 'bg-destructive')
   }, [setTransactions, showToast])
+
+  const handleUpdateTransaction = useCallback(
+    (id: string, data: Omit<Transaction, 'id' | 'createdAt'>) => {
+      setTransactions(prev =>
+        prev.map(t => (t.id === id ? { ...t, ...data } : t))
+      )
+      showToast('取引を更新しました', 'bg-money')
+    },
+    [setTransactions, showToast]
+  )
+
+  // Money category handlers
+  const handleAddCategory = useCallback(
+    (data: Omit<MoneyCategory, 'id' | 'order'>) => {
+      const newCat: MoneyCategory = {
+        ...data,
+        id: crypto.randomUUID(),
+        order: moneyCategories.filter(c => c.type === data.type).length,
+      }
+      setMoneyCategories(prev => [...prev, newCat])
+      showToast(`${data.name}を追加しました`, 'bg-money')
+    },
+    [moneyCategories, setMoneyCategories, showToast]
+  )
+
+  const handleDeleteCategory = useCallback(
+    (id: string) => {
+      setMoneyCategories(prev => prev.filter(c => c.id !== id))
+      // カテゴリ削除時、そのカテゴリの予算も削除
+      setBudgets(prev => prev.filter(b => b.categoryId !== id))
+      showToast('カテゴリを削除しました', 'bg-destructive')
+    },
+    [setMoneyCategories, setBudgets, showToast]
+  )
+
+  const handleMoveCategory = useCallback(
+    (id: string, direction: -1 | 1) => {
+      setMoneyCategories(prev => {
+        const target = prev.find(c => c.id === id)
+        if (!target) return prev
+        const sameType = prev
+          .filter(c => c.type === target.type)
+          .sort((a, b) => a.order - b.order)
+        const index = sameType.findIndex(c => c.id === id)
+        const newIndex = index + direction
+        if (newIndex < 0 || newIndex >= sameType.length) return prev
+        // 入れ替え
+        const newOrderMap = new Map<string, number>()
+        sameType.forEach((c, i) => newOrderMap.set(c.id, i))
+        const movedId = sameType[newIndex].id
+        newOrderMap.set(id, newIndex)
+        newOrderMap.set(movedId, index)
+        return prev.map(c => {
+          const newOrder = newOrderMap.get(c.id)
+          return newOrder !== undefined ? { ...c, order: newOrder } : c
+        })
+      })
+    },
+    [setMoneyCategories]
+  )
+
+  // Budget handlers
+  const handleSaveBudget = useCallback(
+    (categoryId: string, month: string, amount: number) => {
+      setBudgets(prev => {
+        const existing = prev.find(b => b.categoryId === categoryId && b.month === month)
+        if (existing) {
+          return prev.map(b =>
+            b.id === existing.id ? { ...b, amount } : b
+          )
+        }
+        return [
+          ...prev,
+          { id: crypto.randomUUID(), categoryId, month, amount },
+        ]
+      })
+    },
+    [setBudgets]
+  )
+
+  const handleDeleteBudget = useCallback(
+    (categoryId: string, month: string) => {
+      setBudgets(prev =>
+        prev.filter(b => !(b.categoryId === categoryId && b.month === month))
+      )
+    },
+    [setBudgets]
+  )
 
   // Workout handlers
   const handleAddWorkout = useCallback((data: Omit<WorkoutEntry, 'id' | 'createdAt'>) => {
@@ -505,8 +626,16 @@ export default function AxisApp() {
         {activeTab === 'money' && (
           <MoneyTab
             transactions={transactions}
+            categories={moneyCategories}
+            budgets={budgets}
             onAddTransaction={handleAddTransaction}
+            onUpdateTransaction={handleUpdateTransaction}
             onDeleteTransaction={handleDeleteTransaction}
+            onAddCategory={handleAddCategory}
+            onDeleteCategory={handleDeleteCategory}
+            onMoveCategory={handleMoveCategory}
+            onSaveBudget={handleSaveBudget}
+            onDeleteBudget={handleDeleteBudget}
           />
         )}
 

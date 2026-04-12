@@ -1,11 +1,31 @@
 export interface Transaction {
   id: string
   type: '収入' | '支出'
-  category: string
+  category: string // 表示名(後方互換用)
+  categoryId?: string // Category.id への参照。旧エントリは undefined で category を使う
   amount: number
-  date: string
+  date: string // YYYY-MM-DD
   memo: string
   createdAt: number
+}
+
+// ユーザー定義可能なカテゴリ。ビルトインも DB に投入される。
+export interface MoneyCategory {
+  id: string
+  name: string
+  type: '収入' | '支出'
+  icon: string // lucide-react アイコン名
+  color: string // CSS color
+  builtin?: boolean // true なら初期データ (削除はできるが復元可能)
+  order: number // 表示順
+}
+
+// 月次カテゴリ予算
+export interface Budget {
+  id: string
+  categoryId: string
+  month: string // YYYY-MM
+  amount: number
 }
 
 export interface WorkoutEntry {
