@@ -82,6 +82,26 @@ export interface FoodEntry {
   carbs: number
   mealTiming: '朝食' | '昼食' | '夕食' | '間食'
   date: string
+  recipeId?: string // レシピ展開由来ならレシピID
+  createdAt: number
+}
+
+// レシピ: 複数食品を1つにまとめてワンタップで再追加できる
+export interface RecipeItem {
+  foodItemId: string // FoodItem.id or 'custom:xxx'
+  foodName: string // スナップショット
+  amount: number // grams (dishカテゴリの場合は人前*100)
+}
+
+export interface Recipe {
+  id: string
+  name: string
+  items: RecipeItem[]
+  // 集計値 (計算済み、表示用キャッシュ)
+  totalCalories: number
+  totalProtein: number
+  totalFat: number
+  totalCarbs: number
   createdAt: number
 }
 
@@ -101,6 +121,7 @@ export interface CustomFoodItem {
   protein: number
   fat: number
   carbs: number
+  barcode?: string // JAN / EAN コード (バーコードスキャン登録時)
   createdAt: number
 }
 

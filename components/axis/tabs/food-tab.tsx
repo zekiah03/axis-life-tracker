@@ -1,14 +1,22 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Plus, Trash2, Settings2, Flame } from 'lucide-react'
+import { Plus, Trash2, Settings2, Flame, BookMarked, Edit3 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import type { FoodEntry, FoodGoal, CustomFoodItem } from '@/lib/types'
+import type { FoodEntry, FoodGoal, CustomFoodItem, Recipe } from '@/lib/types'
 import { foodDatabase, type FoodItem } from '@/lib/food-database'
 import { FoodDatePicker, getToday } from '@/components/axis/food/date-picker'
 import { FoodEntryDialog } from '@/components/axis/food/food-entry-dialog'
 import { GoalDialog } from '@/components/axis/food/goal-dialog'
+import { RecipeBuilderDialog } from '@/components/axis/food/recipe-builder-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
 type MealTiming = '朝食' | '昼食' | '夕食' | '間食'
@@ -17,11 +25,15 @@ interface FoodTabProps {
   foods: FoodEntry[]
   goal: FoodGoal
   customFoods: CustomFoodItem[]
+  recipes: Recipe[]
   prefilledFood?: string
   onAddFood: (entry: Omit<FoodEntry, 'id' | 'createdAt'>) => void
   onDeleteFood: (id: string) => void
   onSaveGoal: (goal: FoodGoal) => void
   onAddCustomFood: (food: Omit<CustomFoodItem, 'id' | 'createdAt'>) => CustomFoodItem
+  onApplyRecipe: (recipe: Recipe, mealTiming: '朝食' | '昼食' | '夕食' | '間食', date: string) => void
+  onSaveRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt'>, editingId?: string) => void
+  onDeleteRecipe: (id: string) => void
   onClearPrefill?: () => void
 }
 
@@ -81,17 +93,24 @@ export function FoodTab({
   foods,
   goal,
   customFoods,
+  recipes,
   prefilledFood,
   onAddFood,
   onDeleteFood,
   onSaveGoal,
   onAddCustomFood,
+  onApplyRecipe,
+  onSaveRecipe,
+  onDeleteRecipe,
   onClearPrefill,
 }: FoodTabProps) {
   const [date, setDate] = useState(getToday())
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMeal, setDialogMeal] = useState<MealTiming>('昼食')
   const [goalDialogOpen, setGoalDialogOpen] = useState(false)
+  const [recipeManagerOpen, setRecipeManagerOpen] = useState(false)
+  const [recipeBuilderOpen, setRecipeBuilderOpen] = useState(false)
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null)
 
   // 検索オーバーレイからの prefill
   useEffect(() => {
@@ -177,6 +196,20 @@ export function FoodTab({
     <div className="space-y-4 pb-20 relative">
       {/* 日付切替 */}
       <FoodDatePicker date={date} onChange={setDate} />
+
+      {/* ツールバー (レシピ管理など) */}
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1 text-xs"
+          onClick={() => setRecipeManagerOpen(true)}
+        >
+          <BookMarked className="h-3.5 w-3.5" />
+          レシピを管理 ({recipes.length})
+        </Button>
+      </div>
 
       {/* ダッシュボード: 進捗リング + 設定ボタン */}
       <Card className="bg-card border-border">
@@ -351,7 +384,9 @@ export function FoodTab({
         defaultMealTiming={dialogMeal}
         recents={recents}
         customFoods={customFoods}
+        recipes={recipes}
         onSubmit={onAddFood}
+        onSubmitRecipe={onApplyRecipe}
         onAddCustomFood={onAddCustomFood}
       />
 
@@ -360,6 +395,92 @@ export function FoodTab({
         onOpenChange={setGoalDialogOpen}
         goal={goal}
         onSave={onSaveGoal}
+      />
+
+      {/* レシピ管理 (一覧・追加・編集・削除) */}
+      <Dialog open={recipeManagerOpen} onOpenChange={setRecipeManagerOpen}>
+        <DialogContent className="max-w-[440px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>レシピを管理</DialogTitle>
+            <DialogDescription>
+              よく食べる組み合わせをレシピとして保存しておくと、1タップでまとめて記録できます。
+            </DialogDescription>
+          </DialogHeader>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-1 border-dashed"
+            onClick={() => {
+              setEditingRecipe(null)
+              setRecipeBuilderOpen(true)
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            新しいレシピを作成
+          </Button>
+
+          <div className="space-y-2">
+            {recipes.length === 0 ? (
+              <p className="text-center text-xs text-muted-foreground py-8">
+                まだレシピがありません
+              </p>
+            ) : (
+              recipes.map((recipe) => (
+                <div
+                  key={recipe.id}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-secondary/40 p-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {recipe.name}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {recipe.items.length} 品 · {Math.round(recipe.totalCalories)} kcal ·
+                      P{recipe.totalProtein.toFixed(0)} F{recipe.totalFat.toFixed(0)} C{recipe.totalCarbs.toFixed(0)}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setEditingRecipe(recipe)
+                      setRecipeBuilderOpen(true)
+                    }}
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                    onClick={() => {
+                      if (confirm(`「${recipe.name}」を削除しますか?`)) {
+                        onDeleteRecipe(recipe.id)
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <RecipeBuilderDialog
+        open={recipeBuilderOpen}
+        onOpenChange={setRecipeBuilderOpen}
+        customFoods={customFoods}
+        editing={editingRecipe}
+        onSave={(data) => {
+          onSaveRecipe(data, editingRecipe?.id)
+          setEditingRecipe(null)
+        }}
       />
     </div>
   )

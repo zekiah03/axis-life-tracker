@@ -23,6 +23,7 @@ import type {
   FoodEntry,
   FoodGoal,
   CustomFoodItem,
+  Recipe,
   SleepEntry,
   BodyEntry,
   MetricDefinition,
@@ -38,6 +39,7 @@ import { fetchDailyValues, fetchSleepSessions } from '@/lib/native-health'
 import { metricPresets } from '@/lib/metric-presets'
 import { computeSleepScore } from '@/lib/sleep-score'
 import { allDefaultCategories } from '@/lib/money-categories'
+import { foodDatabase } from '@/lib/food-database'
 
 export default function AxisApp() {
   const [activeTab, setActiveTab] = useState<TabType>('home')
@@ -61,6 +63,7 @@ export default function AxisApp() {
     carbs: 260,
   })
   const [customFoods, setCustomFoods] = useLocalStorage<CustomFoodItem[]>('axis-custom-foods', [])
+  const [recipes, setRecipes] = useLocalStorage<Recipe[]>('axis-recipes', [])
   const [sleeps, setSleeps] = useLocalStorage<SleepEntry[]>('axis-sleeps', [])
   const [bodies, setBodies] = useLocalStorage<BodyEntry[]>('axis-bodies', [])
   const [metrics, setMetrics] = useLocalStorage<MetricDefinition[]>('axis-metrics', [])
@@ -386,6 +389,83 @@ export default function AxisApp() {
       return newFood
     },
     [setCustomFoods]
+  )
+
+  // レシピ保存 (新規 or 編集)
+  const handleSaveRecipe = useCallback(
+    (data: Omit<Recipe, 'id' | 'createdAt'>, editingId?: string) => {
+      if (editingId) {
+        setRecipes(prev =>
+          prev.map(r =>
+            r.id === editingId
+              ? { ...r, ...data, id: editingId, createdAt: r.createdAt }
+              : r
+          )
+        )
+        showToast('レシピを更新しました', 'bg-food')
+      } else {
+        const newRecipe: Recipe = {
+          ...data,
+          id: crypto.randomUUID(),
+          createdAt: Date.now(),
+        }
+        setRecipes(prev => [...prev, newRecipe])
+        showToast('レシピを作成しました', 'bg-food')
+      }
+    },
+    [setRecipes, showToast]
+  )
+
+  const handleDeleteRecipe = useCallback(
+    (id: string) => {
+      setRecipes(prev => prev.filter(r => r.id !== id))
+      showToast('レシピを削除しました', 'bg-destructive')
+    },
+    [setRecipes, showToast]
+  )
+
+  // レシピを食事記録として展開 (各itemがそれぞれFoodEntryになる、recipeIdでタグ付け)
+  const handleApplyRecipe = useCallback(
+    (
+      recipe: Recipe,
+      mealTiming: '朝食' | '昼食' | '夕食' | '間食',
+      date: string
+    ) => {
+      // 全食品 (builtin + custom) でアイテムを解決して栄養を計算
+      const byId = new Map<string, { calories: number; protein: number; fat: number; carbs: number; category?: string }>()
+      for (const f of foodDatabase) {
+        byId.set(f.id, { calories: f.calories, protein: f.protein, fat: f.fat, carbs: f.carbs, category: f.category })
+      }
+      for (const c of customFoods) {
+        byId.set(`custom:${c.id}`, { calories: c.calories, protein: c.protein, fat: c.fat, carbs: c.carbs })
+      }
+      const now = Date.now()
+      const newEntries: FoodEntry[] = []
+      for (const item of recipe.items) {
+        const food = byId.get(item.foodItemId)
+        if (!food) continue
+        const multiplier = item.amount / 100
+        newEntries.push({
+          id: crypto.randomUUID(),
+          foodName: item.foodName,
+          foodItemId: item.foodItemId,
+          amount: item.amount,
+          calories: food.calories * multiplier,
+          protein: food.protein * multiplier,
+          fat: food.fat * multiplier,
+          carbs: food.carbs * multiplier,
+          mealTiming,
+          date,
+          recipeId: recipe.id,
+          createdAt: now,
+        })
+      }
+      if (newEntries.length > 0) {
+        setFoods(prev => [...prev, ...newEntries])
+        showToast(`${recipe.name} を追加しました`, 'bg-food')
+      }
+    },
+    [customFoods, setFoods, showToast]
   )
 
   // Sleep handlers
@@ -718,10 +798,14 @@ export default function AxisApp() {
             foods={foods}
             goal={foodGoal}
             customFoods={customFoods}
+            recipes={recipes}
             onAddFood={handleAddFood}
             onDeleteFood={handleDeleteFood}
             onSaveGoal={handleSaveFoodGoal}
             onAddCustomFood={handleAddCustomFood}
+            onApplyRecipe={handleApplyRecipe}
+            onSaveRecipe={handleSaveRecipe}
+            onDeleteRecipe={handleDeleteRecipe}
             prefilledFood={prefilledFood}
             onClearPrefill={handleClearPrefill}
           />
