@@ -49,6 +49,7 @@ import { metricPresets } from '@/lib/metric-presets'
 import { computeSleepScore } from '@/lib/sleep-score'
 import { allDefaultCategories } from '@/lib/money-categories'
 import { foodDatabase } from '@/lib/food-database'
+import { DEFAULT_WIDGET_CONFIG, type WidgetConfig } from '@/lib/widgets'
 
 export default function AxisApp() {
   const [activeTab, setActiveTab] = useState<TabType>('home')
@@ -66,6 +67,21 @@ export default function AxisApp() {
     'axis-reminders',
     DEFAULT_REMINDER_CONFIG
   )
+
+  // Widget config
+  const [widgetConfig, setWidgetConfig] = useLocalStorage<WidgetConfig[]>(
+    'axis-widget-config',
+    DEFAULT_WIDGET_CONFIG
+  )
+
+  // 新しいウィジェットが追加された時にconfigを自動補完
+  useEffect(() => {
+    const known = new Set(widgetConfig.map(w => w.id))
+    const missing = DEFAULT_WIDGET_CONFIG.filter(w => !known.has(w.id))
+    if (missing.length > 0) {
+      setWidgetConfig([...widgetConfig, ...missing])
+    }
+  }, [widgetConfig, setWidgetConfig])
   const [prefilledFood, setPrefilledFood] = useState<string | undefined>()
   const [toast, setToast] = useState({ message: '', visible: false, color: 'bg-foreground' })
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -810,9 +826,16 @@ export default function AxisApp() {
           <DashboardTab
             transactions={transactions}
             workouts={workouts}
+            workoutSessions={workoutSessions}
             foods={foods}
+            foodGoal={foodGoal}
+            sleeps={sleeps}
+            bodies={bodies}
             metrics={metrics}
             metricEntries={metricEntries}
+            widgetConfig={widgetConfig}
+            onWidgetConfigChange={setWidgetConfig}
+            onNavigateToTab={(tab) => setActiveTab(tab as TabType)}
             onNavigateToMetric={(metricId) => setActiveTab(`metric:${metricId}`)}
           />
         )}

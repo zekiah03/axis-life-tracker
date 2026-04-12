@@ -39,6 +39,9 @@ export const EXPORT_KEYS = [
   // App state
   'axis-tab-config-v2',
   'axis-onboarded',
+  'axis-widget-config',
+  'axis-locale',
+  'axis-reminders',
 ] as const
 
 export type ExportKey = typeof EXPORT_KEYS[number]
