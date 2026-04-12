@@ -130,11 +130,11 @@ export function DashboardTab(props: DashboardTabProps) {
       return new Date(b.date) <= d
     })
 
-    // Streak
+    // Streak — 最大60日遡って連続記録日数を数える
     let streak = 0
     const checkDate = new Date()
-    // Check today first, then count backwards
-    while (true) {
+    let skippedToday = false
+    for (let i = 0; i < 60; i++) {
       const dateStr = checkDate.toISOString().split('T')[0]
       const hasRecord =
         transactions.some(t => t.date === dateStr) ||
@@ -145,16 +145,13 @@ export function DashboardTab(props: DashboardTabProps) {
         metricEntries.some(e => e.date === dateStr)
       if (hasRecord) {
         streak++
-        checkDate.setDate(checkDate.getDate() - 1)
+      } else if (streak === 0 && !skippedToday) {
+        // 今日まだ記録がなければ昨日から数える（1回だけスキップ）
+        skippedToday = true
       } else {
-        // If today has no records yet, don't break streak from yesterday
-        if (streak === 0) {
-          checkDate.setDate(checkDate.getDate() - 1)
-          continue
-        }
         break
       }
-      if (streak > 365) break // safety
+      checkDate.setDate(checkDate.getDate() - 1)
     }
 
     const recentTx = [...transactions].sort((a, b) => b.createdAt - a.createdAt).slice(0, 4)
