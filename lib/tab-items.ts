@@ -1,7 +1,7 @@
 // BottomNav とオンボーディング/設定画面で共有するタブメタデータ。
 // 組み込みとメトリクスの両方を統一インターフェースで扱う。
 
-import { Wallet, Dumbbell, Utensils, Moon, Scale, HeartPulse, StretchHorizontal, Brain } from 'lucide-react'
+import { Wallet, Dumbbell, Utensils, Moon, Scale, HeartPulse, StretchHorizontal, Brain, BookOpen, Book, Sparkles, Smartphone } from 'lucide-react'
 import * as Icons from 'lucide-react'
 import type { BuiltinTabId, MetricDefinition, TabType } from './types'
 
@@ -88,6 +88,46 @@ export const BUILTIN_META: Record<BuiltinTabId, BuiltinMeta> = {
     icon: Brain,
     colorClass: 'text-food',
     indicatorClass: 'bg-food',
+  },
+  habits: {
+    id: 'habits',
+    label: '習慣',
+    description: '勉強・読書・瞑想(まとめ)',
+    icon: BookOpen,
+    colorClass: 'text-money',
+    indicatorClass: 'bg-money',
+  },
+  study: {
+    id: 'study',
+    label: '勉強',
+    description: '科目別の学習記録',
+    icon: BookOpen,
+    colorClass: 'text-food',
+    indicatorClass: 'bg-food',
+  },
+  reading: {
+    id: 'reading',
+    label: '読書',
+    description: '本の記録・読書リスト',
+    icon: Book,
+    colorClass: 'text-sleep',
+    indicatorClass: 'bg-sleep',
+  },
+  meditation: {
+    id: 'meditation',
+    label: '瞑想',
+    description: 'マインドフルネス',
+    icon: Sparkles,
+    colorClass: 'text-money',
+    indicatorClass: 'bg-money',
+  },
+  screentime: {
+    id: 'screentime',
+    label: 'スクリーン',
+    description: '画面時間の管理',
+    icon: Smartphone,
+    colorClass: 'text-foreground',
+    indicatorClass: 'bg-foreground',
   },
 }
 

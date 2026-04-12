@@ -260,14 +260,36 @@ export interface MentalEntry {
   createdAt: number
 }
 
+// 習慣記録 (勉強・読書・瞑想・スクリーンタイム等を一括管理)
+export type HabitType = 'study' | 'reading' | 'meditation' | 'screentime' | 'custom'
+
+export interface HabitEntry {
+  id: string
+  habitType: HabitType
+  customName?: string // custom の場合の名前
+  value: number // 分 or ページ数 etc.
+  unit: string // '分', 'ページ', '時間'
+  subject?: string // 科目, 本のタイトル, 瞑想の種類 etc.
+  notes?: string
+  date: string
+  createdAt: number
+}
+
+export interface HabitGoal {
+  habitType: HabitType
+  customName?: string
+  target: number // 日次目標値
+  unit: string
+}
+
 // 「組み込み」カテゴリ: 固有のデータモデルと専用タブUIを持つ
-export type BuiltinTabId = 'money' | 'workout' | 'food' | 'sleep' | 'body' | 'cardio' | 'stretch' | 'mental'
+export type BuiltinTabId = 'money' | 'workout' | 'food' | 'sleep' | 'body' | 'cardio' | 'stretch' | 'mental' | 'habits' | 'study' | 'reading' | 'meditation' | 'screentime'
 
 // タブの識別子。Home / 組み込み / 動的メトリクスの3種
 // メトリクスは "metric:{metricId}" の形式で表現する
 export type TabType = 'home' | BuiltinTabId | `metric:${string}`
 
-export const BUILTIN_TAB_IDS: BuiltinTabId[] = ['money', 'workout', 'food', 'sleep', 'body', 'cardio', 'stretch', 'mental']
+export const BUILTIN_TAB_IDS: BuiltinTabId[] = ['money', 'workout', 'food', 'sleep', 'body', 'cardio', 'stretch', 'mental', 'habits', 'study', 'reading', 'meditation', 'screentime']
 
 export interface TabConfig {
   // 組み込みなら id = BuiltinTabId、メトリクスなら id = "metric:{metricId}"

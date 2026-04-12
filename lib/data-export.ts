@@ -40,6 +40,8 @@ export const EXPORT_KEYS = [
   'axis-workout-routines',
   'axis-activities',
   'axis-mental',
+  'axis-habits',
+  'axis-habit-goals',
   'axis-favorite-foods',
   'axis-tab-config-v2',
   'axis-onboarded',

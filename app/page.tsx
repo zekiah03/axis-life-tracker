@@ -23,6 +23,7 @@ import { BodyTab } from '@/components/axis/tabs/body-tab'
 import { MetricDetailTab } from '@/components/axis/tabs/metric-detail-tab'
 import { ActivityTab } from '@/components/axis/tabs/activity-tab'
 import { MentalTab } from '@/components/axis/tabs/mental-tab'
+import { HabitsTab } from '@/components/axis/tabs/habits-tab'
 import { TabSettingsDialog } from '@/components/axis/tab-settings-dialog'
 import { DataManagementDialog } from '@/components/axis/data-management-dialog'
 import { useLocalStorage } from '@/hooks/use-local-storage'
@@ -36,6 +37,8 @@ import type {
   WorkoutSet,
   ActivityEntry,
   MentalEntry,
+  HabitEntry,
+  HabitGoal,
   FoodEntry,
   FoodGoal,
   CustomFoodItem,
@@ -105,6 +108,8 @@ export default function AxisApp() {
   const [favoriteFoods, setFavoriteFoods] = useLocalStorage<string[]>('axis-favorite-foods', [])
   const [activities, setActivities] = useLocalStorage<ActivityEntry[]>('axis-activities', [])
   const [mentalEntries, setMentalEntries] = useLocalStorage<MentalEntry[]>('axis-mental', [])
+  const [habitEntries, setHabitEntries] = useLocalStorage<HabitEntry[]>('axis-habits', [])
+  const [habitGoals, setHabitGoals] = useLocalStorage<HabitGoal[]>('axis-habit-goals', [])
   const [foods, setFoods] = useLocalStorage<FoodEntry[]>('axis-foods', [])
   const [foodGoal, setFoodGoal] = useLocalStorage<FoodGoal>('axis-food-goal', {
     calories: 2200,
@@ -478,6 +483,22 @@ export default function AxisApp() {
     setWorkoutRoutines(prev => prev.filter(r => r.id !== id))
     showToast('ルーティンを削除しました', 'bg-destructive')
   }, [setWorkoutRoutines, showToast])
+
+  // Habit handlers
+  const handleAddHabit = useCallback((data: Omit<HabitEntry, 'id' | 'createdAt'>) => {
+    const newEntry: HabitEntry = { ...data, id: crypto.randomUUID(), createdAt: Date.now() }
+    setHabitEntries(prev => [...prev, newEntry])
+    showToast('記録しました', 'bg-money')
+  }, [setHabitEntries, showToast])
+
+  const handleDeleteHabit = useCallback((id: string) => {
+    setHabitEntries(prev => prev.filter(e => e.id !== id))
+  }, [setHabitEntries])
+
+  const handleSaveHabitGoals = useCallback((goals: HabitGoal[]) => {
+    setHabitGoals(goals)
+    showToast('目標を保存しました', 'bg-money')
+  }, [setHabitGoals, showToast])
 
   // Mental handlers
   const handleAddMental = useCallback((data: Omit<MentalEntry, 'id' | 'createdAt'>) => {
@@ -1019,6 +1040,72 @@ export default function AxisApp() {
             onAddBody={handleAddBody}
             onDeleteBody={handleDeleteBody}
             onSyncFromHealth={handleSyncBodyFromHealth}
+          />
+        )}
+
+        {activeTab === 'habits' && (
+          <HabitsTab
+            entries={habitEntries}
+            goals={habitGoals}
+            onAdd={handleAddHabit}
+            onDelete={handleDeleteHabit}
+            onSaveGoals={handleSaveHabitGoals}
+          />
+        )}
+
+        {activeTab === 'study' && (
+          <HabitsTab
+            entries={habitEntries.filter(e => e.habitType === 'study')}
+            goals={habitGoals.filter(g => g.habitType === 'study')}
+            onAdd={(data) => handleAddHabit({ ...data, habitType: 'study', unit: '分' })}
+            onDelete={handleDeleteHabit}
+            onSaveGoals={(goals) => {
+              const others = habitGoals.filter(g => g.habitType !== 'study')
+              handleSaveHabitGoals([...others, ...goals])
+            }}
+            singleHabitMode="study"
+          />
+        )}
+
+        {activeTab === 'reading' && (
+          <HabitsTab
+            entries={habitEntries.filter(e => e.habitType === 'reading')}
+            goals={habitGoals.filter(g => g.habitType === 'reading')}
+            onAdd={(data) => handleAddHabit({ ...data, habitType: 'reading', unit: 'ページ' })}
+            onDelete={handleDeleteHabit}
+            onSaveGoals={(goals) => {
+              const others = habitGoals.filter(g => g.habitType !== 'reading')
+              handleSaveHabitGoals([...others, ...goals])
+            }}
+            singleHabitMode="reading"
+          />
+        )}
+
+        {activeTab === 'meditation' && (
+          <HabitsTab
+            entries={habitEntries.filter(e => e.habitType === 'meditation')}
+            goals={habitGoals.filter(g => g.habitType === 'meditation')}
+            onAdd={(data) => handleAddHabit({ ...data, habitType: 'meditation', unit: '分' })}
+            onDelete={handleDeleteHabit}
+            onSaveGoals={(goals) => {
+              const others = habitGoals.filter(g => g.habitType !== 'meditation')
+              handleSaveHabitGoals([...others, ...goals])
+            }}
+            singleHabitMode="meditation"
+          />
+        )}
+
+        {activeTab === 'screentime' && (
+          <HabitsTab
+            entries={habitEntries.filter(e => e.habitType === 'screentime')}
+            goals={habitGoals.filter(g => g.habitType === 'screentime')}
+            onAdd={(data) => handleAddHabit({ ...data, habitType: 'screentime', unit: '時間' })}
+            onDelete={handleDeleteHabit}
+            onSaveGoals={(goals) => {
+              const others = habitGoals.filter(g => g.habitType !== 'screentime')
+              handleSaveHabitGoals([...others, ...goals])
+            }}
+            singleHabitMode="screentime"
           />
         )}
 

@@ -128,53 +128,9 @@ export const metricPresets: MetricPreset[] = [
     healthSource: 'respiratoryRate',
   },
 
-  // 運動 → 有酸素運動・消費カロリー・ストレッチは専用タブ(cardio/stretch)に移行済み
-  // メンタル → 気分・ストレス・エネルギー・集中力は専用タブ(mental)に移行済み
-
-  // 習慣
-  {
-    name: '勉強',
-    unit: '分',
-    icon: 'BookOpen',
-    color: '#a78bfa',
-    aggregation: 'sum',
-    target: 60,
-    step: 5,
-    category: '習慣',
-    description: '学習時間',
-  },
-  {
-    name: '読書',
-    unit: 'ページ',
-    icon: 'Book',
-    color: '#a78bfa',
-    aggregation: 'sum',
-    step: 1,
-    category: '習慣',
-    description: '読んだページ数',
-  },
-  {
-    name: '瞑想',
-    unit: '分',
-    icon: 'Sparkles',
-    color: '#60a5fa',
-    aggregation: 'sum',
-    target: 10,
-    step: 1,
-    category: '習慣',
-    description: '瞑想・マインドフルネス',
-    healthSource: 'mindfulness',
-  },
-  {
-    name: 'スクリーンタイム',
-    unit: '時間',
-    icon: 'Smartphone',
-    color: '#71717a',
-    aggregation: 'sum',
-    step: 0.5,
-    category: '習慣',
-    description: '画面視聴時間',
-  },
+  // 運動 → 専用タブ(cardio/stretch)に移行済み
+  // メンタル → 専用タブ(mental)に移行済み
+  // 習慣 → 専用タブ(habits)に移行済み
 
   // 嗜好品
   {
