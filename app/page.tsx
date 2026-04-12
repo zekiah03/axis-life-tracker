@@ -132,6 +132,7 @@ export default function AxisApp() {
 
   // 既存取引に categoryId を後付け (名前マッチで補完, 初回のみ)
   useEffect(() => {
+    if (typeof window === 'undefined') return
     const cats = JSON.parse(window.localStorage.getItem('axis-money-categories') || '[]') as MoneyCategory[]
     if (cats.length === 0) return
     const byName = new Map(cats.map((c: MoneyCategory) => [c.name, c.id]))
@@ -174,6 +175,7 @@ export default function AxisApp() {
   // 一回だけの互換性 migration: v1 config (旧形式) と既存メトリクスから v2 を構築
   // 初回マウント時のみ実行
   useEffect(() => {
+    if (typeof window === 'undefined') return
     // 既にオンボード済みなら何もしない
     const storedOnboarded = window.localStorage.getItem('axis-onboarded')
     if (storedOnboarded === 'true') return
@@ -232,18 +234,25 @@ export default function AxisApp() {
     scrollRef.current?.scrollTo(0, 0)
   }, [activeTab])
 
-  // Daily reminder scheduler
+  // Daily reminder scheduler — reminderConfig 変更時のみ再セットアップ
+  // hasRecordToday は呼ばれた時点で localStorage を直接読むので依存不要
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0]
     const hasRecordToday = () => {
-      // 今日のどれかのデータがあるか
+      if (typeof window === 'undefined') return true
+      const today = new Date().toISOString().split('T')[0]
+      const check = (key: string) => {
+        try {
+          const arr = JSON.parse(window.localStorage.getItem(key) || '[]')
+          return Array.isArray(arr) && arr.some((e: { date?: string }) => e.date === today)
+        } catch { return false }
+      }
       return (
-        transactions.some(t => t.date === today) ||
-        foods.some(f => f.date === today) ||
-        workoutSessions.some(s => s.date === today) ||
-        sleeps.some(s => s.date === today) ||
-        bodies.some(b => b.date === today) ||
-        metricEntries.some(e => e.date === today)
+        check('axis-transactions') ||
+        check('axis-foods') ||
+        check('axis-workout-sessions') ||
+        check('axis-sleeps') ||
+        check('axis-bodies') ||
+        check('axis-metric-entries')
       )
     }
     startDailyReminderCheck(reminderConfig, hasRecordToday, {
@@ -251,7 +260,7 @@ export default function AxisApp() {
       body: t.notifications.reminderBody,
     })
     return () => stopDailyReminderCheck()
-  }, [reminderConfig, t, transactions, foods, workoutSessions, sleeps, bodies, metricEntries])
+  }, [reminderConfig, t])
 
   const showToast = useCallback((message: string, color: string) => {
     setToast({ message, visible: true, color })
