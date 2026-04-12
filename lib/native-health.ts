@@ -3,7 +3,7 @@
 
 import { Capacitor } from '@capacitor/core'
 import { Health } from '@capgo/capacitor-health'
-import type { HealthSource } from './types'
+import type { HealthSource, SleepStages } from './types'
 
 export interface NativeHealthAvailability {
   available: boolean
@@ -90,6 +90,137 @@ export async function fetchDailySums(
       .sort((a, b) => a.date.localeCompare(b.date))
   } catch (err) {
     console.error('[native-health] readSamples failed', err)
+    throw err
+  }
+}
+
+// --- 睡眠セッション取得 ---
+// Health Connect / HealthKit から睡眠のサンプルを取得し、「一晩」単位で集計する。
+// 各サンプルは { sleepState, startDate, endDate } の形で返ってくる。
+// state = 'asleep' | 'awake' | 'rem' | 'deep' | 'light' | 'inBed'
+
+export interface SleepSession {
+  date: string // 起床日 (YYYY-MM-DD)
+  bedtime: string // 就寝 HH:MM
+  wakeTime: string // 起床 HH:MM
+  durationMinutes: number // 総睡眠時間 (awake除く)
+  stages: SleepStages
+}
+
+function pad(n: number): string {
+  return n.toString().padStart(2, '0')
+}
+
+function toHHMM(d: Date): string {
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function toYMD(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+// 前後のサンプルが近い (ギャップ < 90分) ものを1つのセッションとしてまとめる
+const SESSION_GAP_MS = 90 * 60 * 1000
+
+export async function fetchSleepSessions(daysBack: number = 7): Promise<SleepSession[]> {
+  if (!Capacitor.isNativePlatform()) return []
+
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  start.setDate(start.getDate() - daysBack)
+  const startDate = start.toISOString()
+  const endDate = new Date().toISOString()
+
+  try {
+    const { samples } = await Health.readSamples({
+      dataType: 'sleep',
+      startDate,
+      endDate,
+      limit: 5000,
+      ascending: true,
+    })
+
+    if (samples.length === 0) return []
+
+    // 時間順にクラスタリング
+    const clusters: typeof samples[] = []
+    let currentCluster: typeof samples = []
+    let prevEnd = 0
+
+    for (const sample of samples) {
+      const sStart = new Date(sample.startDate).getTime()
+      if (currentCluster.length === 0 || sStart - prevEnd < SESSION_GAP_MS) {
+        currentCluster.push(sample)
+      } else {
+        clusters.push(currentCluster)
+        currentCluster = [sample]
+      }
+      prevEnd = Math.max(prevEnd, new Date(sample.endDate).getTime())
+    }
+    if (currentCluster.length > 0) clusters.push(currentCluster)
+
+    // 各クラスタをセッションに変換
+    const sessions: SleepSession[] = []
+    for (const cluster of clusters) {
+      const clusterStart = new Date(cluster[0].startDate)
+      const clusterEnd = new Date(
+        Math.max(...cluster.map(s => new Date(s.endDate).getTime()))
+      )
+
+      const stages: SleepStages = {
+        deepMinutes: 0,
+        lightMinutes: 0,
+        remMinutes: 0,
+        awakeMinutes: 0,
+      }
+
+      for (const sample of cluster) {
+        const sStart = new Date(sample.startDate).getTime()
+        const sEnd = new Date(sample.endDate).getTime()
+        const minutes = (sEnd - sStart) / (60 * 1000)
+        switch (sample.sleepState) {
+          case 'deep':
+            stages.deepMinutes += minutes
+            break
+          case 'rem':
+            stages.remMinutes += minutes
+            break
+          case 'light':
+            stages.lightMinutes += minutes
+            break
+          case 'awake':
+            stages.awakeMinutes += minutes
+            break
+          case 'asleep':
+            // 粒度の粗いデータ: stageに分けられないので light に含める
+            stages.lightMinutes += minutes
+            break
+          // 'inBed' は総就寝時間の目安だけなので無視
+        }
+      }
+
+      const durationMinutes = Math.round(
+        stages.deepMinutes + stages.lightMinutes + stages.remMinutes
+      )
+      if (durationMinutes < 30) continue // 30分未満は昼寝扱いで除外
+
+      sessions.push({
+        date: toYMD(clusterEnd), // 起床日
+        bedtime: toHHMM(clusterStart),
+        wakeTime: toHHMM(clusterEnd),
+        durationMinutes,
+        stages: {
+          deepMinutes: Math.round(stages.deepMinutes),
+          lightMinutes: Math.round(stages.lightMinutes),
+          remMinutes: Math.round(stages.remMinutes),
+          awakeMinutes: Math.round(stages.awakeMinutes),
+        },
+      })
+    }
+
+    return sessions
+  } catch (err) {
+    console.error('[native-health] fetchSleepSessions failed', err)
     throw err
   }
 }

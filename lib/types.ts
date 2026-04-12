@@ -32,14 +32,26 @@ export interface FoodEntry {
   createdAt: number
 }
 
+export interface SleepStages {
+  deepMinutes: number // 深い眠り
+  lightMinutes: number // 浅い眠り
+  remMinutes: number // レム睡眠
+  awakeMinutes: number // 覚醒(夜中に起きた時間)
+}
+
 export interface SleepEntry {
   id: string
   date: string // 起床日 (YYYY-MM-DD)
   bedtime: string // 就寝時刻 HH:MM
   wakeTime: string // 起床時刻 HH:MM
-  duration: number // 睡眠時間 (分)
-  quality: 1 | 2 | 3 | 4 | 5 // 睡眠の質
+  duration: number // 総睡眠時間 (分) - 覚醒時間を除く
+  // 手動入力時は 1-5 の自己評価、Health同期時は 0-100 の自動スコア
+  quality: number
+  // 自動スコア (Health由来) の時のみ入れる
+  autoScore?: number
   memo: string
+  source: 'manual' | 'health' // どこから来たエントリか
+  stages?: SleepStages // Health同期時のみ
   createdAt: number
 }
 

@@ -29,8 +29,9 @@ import type {
 } from '@/lib/types'
 import { isMetricTabId, getMetricIdFromTabId } from '@/lib/types'
 import type { MetricPreset } from '@/lib/metric-presets'
-import { fetchDailySums } from '@/lib/native-health'
+import { fetchDailySums, fetchSleepSessions } from '@/lib/native-health'
 import { metricPresets } from '@/lib/metric-presets'
+import { computeSleepScore } from '@/lib/sleep-score'
 
 export default function AxisApp() {
   const [activeTab, setActiveTab] = useState<TabType>('home')
@@ -204,6 +205,7 @@ export default function AxisApp() {
   const handleAddSleep = useCallback((data: Omit<SleepEntry, 'id' | 'createdAt'>) => {
     const newSleep: SleepEntry = {
       ...data,
+      source: data.source || 'manual',
       id: crypto.randomUUID(),
       createdAt: Date.now(),
     }
@@ -211,9 +213,53 @@ export default function AxisApp() {
     showToast('睡眠を記録しました', 'bg-sleep')
   }, [setSleeps, showToast])
 
+  // 既存の睡眠エントリに source を後付け (migration)
+  useEffect(() => {
+    const needs = sleeps.some(s => s.source === undefined)
+    if (needs) {
+      setSleeps(sleeps.map(s => (s.source ? s : { ...s, source: 'manual' as const })))
+    }
+  }, [sleeps, setSleeps])
+
   const handleDeleteSleep = useCallback((id: string) => {
     setSleeps(prev => prev.filter(s => s.id !== id))
     showToast('睡眠を削除しました', 'bg-destructive')
+  }, [setSleeps, showToast])
+
+  // ネイティブヘルスから睡眠を取り込み、Fitbit風スコアを算出して登録
+  const handleSyncSleepFromHealth = useCallback(async (): Promise<number> => {
+    const sessions = await fetchSleepSessions(7)
+    if (sessions.length === 0) return 0
+
+    const now = Date.now()
+    const newEntries: SleepEntry[] = sessions.map(session => {
+      const breakdown = computeSleepScore(session.durationMinutes, session.stages)
+      return {
+        id: crypto.randomUUID(),
+        date: session.date,
+        bedtime: session.bedtime,
+        wakeTime: session.wakeTime,
+        duration: session.durationMinutes,
+        quality: Math.max(1, Math.round((breakdown.total / 100) * 5)) as 1 | 2 | 3 | 4 | 5,
+        autoScore: breakdown.total,
+        stages: session.stages,
+        memo: 'ヘルスケアから同期',
+        source: 'health',
+        createdAt: now,
+      }
+    })
+
+    // 同じ日付の health 由来エントリは置換、手動入力は残す
+    setSleeps(prev => {
+      const syncedDates = new Set(newEntries.map(e => e.date))
+      const filtered = prev.filter(
+        s => !(s.source === 'health' && syncedDates.has(s.date))
+      )
+      return [...filtered, ...newEntries]
+    })
+
+    showToast(`${sessions.length}晩分を同期しました`, 'bg-sleep')
+    return sessions.length
   }, [setSleeps, showToast])
 
   // Body handlers
@@ -432,6 +478,7 @@ export default function AxisApp() {
             sleeps={sleeps}
             onAddSleep={handleAddSleep}
             onDeleteSleep={handleDeleteSleep}
+            onSyncFromHealth={handleSyncSleepFromHealth}
           />
         )}
 
