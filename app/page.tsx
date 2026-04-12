@@ -21,6 +21,8 @@ import type {
   WorkoutEntry,
   WorkoutSession,
   FoodEntry,
+  FoodGoal,
+  CustomFoodItem,
   SleepEntry,
   BodyEntry,
   MetricDefinition,
@@ -52,6 +54,13 @@ export default function AxisApp() {
   const [workouts, setWorkouts] = useLocalStorage<WorkoutEntry[]>('axis-workouts', [])
   const [workoutSessions, setWorkoutSessions] = useLocalStorage<WorkoutSession[]>('axis-workout-sessions', [])
   const [foods, setFoods] = useLocalStorage<FoodEntry[]>('axis-foods', [])
+  const [foodGoal, setFoodGoal] = useLocalStorage<FoodGoal>('axis-food-goal', {
+    calories: 2200,
+    protein: 120,
+    fat: 65,
+    carbs: 260,
+  })
+  const [customFoods, setCustomFoods] = useLocalStorage<CustomFoodItem[]>('axis-custom-foods', [])
   const [sleeps, setSleeps] = useLocalStorage<SleepEntry[]>('axis-sleeps', [])
   const [bodies, setBodies] = useLocalStorage<BodyEntry[]>('axis-bodies', [])
   const [metrics, setMetrics] = useLocalStorage<MetricDefinition[]>('axis-metrics', [])
@@ -360,6 +369,24 @@ export default function AxisApp() {
     setFoods(prev => prev.filter(f => f.id !== id))
     showToast('食事を削除しました', 'bg-destructive')
   }, [setFoods, showToast])
+
+  const handleSaveFoodGoal = useCallback((goal: FoodGoal) => {
+    setFoodGoal(goal)
+    showToast('栄養目標を更新しました', 'bg-food')
+  }, [setFoodGoal, showToast])
+
+  const handleAddCustomFood = useCallback(
+    (data: Omit<CustomFoodItem, 'id' | 'createdAt'>): CustomFoodItem => {
+      const newFood: CustomFoodItem = {
+        ...data,
+        id: crypto.randomUUID(),
+        createdAt: Date.now(),
+      }
+      setCustomFoods(prev => [...prev, newFood])
+      return newFood
+    },
+    [setCustomFoods]
+  )
 
   // Sleep handlers
   const handleAddSleep = useCallback((data: Omit<SleepEntry, 'id' | 'createdAt'>) => {
@@ -689,8 +716,12 @@ export default function AxisApp() {
         {activeTab === 'food' && (
           <FoodTab
             foods={foods}
+            goal={foodGoal}
+            customFoods={customFoods}
             onAddFood={handleAddFood}
             onDeleteFood={handleDeleteFood}
+            onSaveGoal={handleSaveFoodGoal}
+            onAddCustomFood={handleAddCustomFood}
             prefilledFood={prefilledFood}
             onClearPrefill={handleClearPrefill}
           />

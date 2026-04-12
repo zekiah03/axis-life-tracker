@@ -206,31 +206,33 @@ export function WorkoutTab({
                     key={session.id}
                     className="rounded-lg bg-secondary/40 border border-border overflow-hidden"
                   >
-                    <button
-                      type="button"
-                      className="w-full flex items-center gap-2 p-3 text-left hover:bg-secondary/60 transition-colors"
-                      onClick={() =>
-                        setExpandedSession(expanded ? null : session.id)
-                      }
-                    >
-                      {expanded ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-foreground truncate">
-                            {session.name || formatDayLabel(session.date)}
-                          </span>
+                    <div className="flex items-center gap-2 p-3 hover:bg-secondary/60 transition-colors">
+                      <button
+                        type="button"
+                        className="flex flex-1 items-center gap-2 text-left min-w-0"
+                        onClick={() =>
+                          setExpandedSession(expanded ? null : session.id)
+                        }
+                      >
+                        {expanded ? (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-foreground truncate">
+                              {session.name || formatDayLabel(session.date)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
+                            <span>{session.date}</span>
+                            {duration && <span>· {duration}</span>}
+                            <span>· {setCount}セット</span>
+                            <span>· {volume.toLocaleString()}kg</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
-                          <span>{session.date}</span>
-                          {duration && <span>· {duration}</span>}
-                          <span>· {setCount}セット</span>
-                          <span>· {volume.toLocaleString()}kg</span>
-                        </div>
-                      </div>
+                      </button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -244,7 +246,7 @@ export function WorkoutTab({
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
-                    </button>
+                    </div>
                     {expanded && (
                       <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
                         {best && (

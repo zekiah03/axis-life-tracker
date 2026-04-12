@@ -74,6 +74,7 @@ export interface WorkoutSession {
 export interface FoodEntry {
   id: string
   foodName: string
+  foodItemId?: string // FoodItem への参照 (カスタム食品含む)
   amount: number // grams
   calories: number
   protein: number
@@ -81,6 +82,25 @@ export interface FoodEntry {
   carbs: number
   mealTiming: '朝食' | '昼食' | '夕食' | '間食'
   date: string
+  createdAt: number
+}
+
+// ユーザー定義の栄養目標
+export interface FoodGoal {
+  calories: number // kcal
+  protein: number // g
+  fat: number // g
+  carbs: number // g
+}
+
+// ユーザーがカスタム追加する食品 (食品DBを拡張する)
+export interface CustomFoodItem {
+  id: string
+  name: string
+  calories: number // per 100g
+  protein: number
+  fat: number
+  carbs: number
   createdAt: number
 }
 

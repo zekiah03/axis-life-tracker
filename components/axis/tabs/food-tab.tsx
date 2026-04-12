@@ -1,283 +1,366 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo } from 'react'
-import { Trash2 } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Plus, Trash2, Settings2, Flame } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import type { FoodEntry } from '@/lib/types'
-import { foodDatabase, searchFoods, type FoodItem } from '@/lib/food-database'
+import type { FoodEntry, FoodGoal, CustomFoodItem } from '@/lib/types'
+import { foodDatabase, type FoodItem } from '@/lib/food-database'
+import { FoodDatePicker, getToday } from '@/components/axis/food/date-picker'
+import { FoodEntryDialog } from '@/components/axis/food/food-entry-dialog'
+import { GoalDialog } from '@/components/axis/food/goal-dialog'
 import { cn } from '@/lib/utils'
+
+type MealTiming = '朝食' | '昼食' | '夕食' | '間食'
 
 interface FoodTabProps {
   foods: FoodEntry[]
-  onAddFood: (food: Omit<FoodEntry, 'id' | 'createdAt'>) => void
-  onDeleteFood: (id: string) => void
+  goal: FoodGoal
+  customFoods: CustomFoodItem[]
   prefilledFood?: string
+  onAddFood: (entry: Omit<FoodEntry, 'id' | 'createdAt'>) => void
+  onDeleteFood: (id: string) => void
+  onSaveGoal: (goal: FoodGoal) => void
+  onAddCustomFood: (food: Omit<CustomFoodItem, 'id' | 'createdAt'>) => CustomFoodItem
   onClearPrefill?: () => void
 }
 
-const mealTimings = ['朝食', '昼食', '夕食', '間食'] as const
+// 進捗リング(SVG)
+function ProgressRing({
+  value,
+  target,
+  size = 140,
+  stroke = 10,
+}: {
+  value: number
+  target: number
+  size?: number
+  stroke?: number
+}) {
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const pct = target > 0 ? Math.min(1, value / target) : 0
+  const offset = circumference * (1 - pct)
+  const remaining = Math.max(0, target - value)
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="var(--color-secondary)"
+          strokeWidth={stroke}
+          fill="none"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={value > target ? '#ef4444' : 'var(--color-food)'}
+          strokeWidth={stroke}
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className="transition-all duration-500"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <p className="text-[10px] text-muted-foreground">残り</p>
+        <p className="text-xl font-bold text-foreground">{Math.round(remaining)}</p>
+        <p className="text-[10px] text-muted-foreground">kcal</p>
+      </div>
+    </div>
+  )
+}
 
-export function FoodTab({ foods, onAddFood, onDeleteFood, prefilledFood, onClearPrefill }: FoodTabProps) {
-  const [foodName, setFoodName] = useState('')
-  const [amount, setAmount] = useState('')
-  const [mealTiming, setMealTiming] = useState<typeof mealTimings[number]>('昼食')
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
-  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null)
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [suggestions, setSuggestions] = useState<FoodItem[]>([])
-  const inputRef = useRef<HTMLInputElement>(null)
-  const suggestionsRef = useRef<HTMLDivElement>(null)
+const MEAL_ORDER: MealTiming[] = ['朝食', '昼食', '夕食', '間食']
 
-  // Handle prefilled food from search
+export function FoodTab({
+  foods,
+  goal,
+  customFoods,
+  prefilledFood,
+  onAddFood,
+  onDeleteFood,
+  onSaveGoal,
+  onAddCustomFood,
+  onClearPrefill,
+}: FoodTabProps) {
+  const [date, setDate] = useState(getToday())
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogMeal, setDialogMeal] = useState<MealTiming>('昼食')
+  const [goalDialogOpen, setGoalDialogOpen] = useState(false)
+
+  // 検索オーバーレイからの prefill
   useEffect(() => {
     if (prefilledFood) {
-      setFoodName(prefilledFood)
-      const found = foodDatabase.find(f => f.name === prefilledFood)
-      if (found) {
-        setSelectedFood(found)
-      }
+      setDialogMeal('昼食')
+      setDialogOpen(true)
       onClearPrefill?.()
     }
   }, [prefilledFood, onClearPrefill])
 
-  useEffect(() => {
-    if (foodName.trim()) {
-      const results = searchFoods(foodName)
-      setSuggestions(results.slice(0, 5))
-    } else {
-      setSuggestions(foodDatabase.slice(0, 5))
-    }
-  }, [foodName])
+  const todayFoods = useMemo(
+    () => foods.filter(f => f.date === date),
+    [foods, date]
+  )
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        suggestionsRef.current &&
-        !suggestionsRef.current.contains(e.target as Node) &&
-        inputRef.current &&
-        !inputRef.current.contains(e.target as Node)
-      ) {
-        setShowSuggestions(false)
+  const totals = useMemo(() => {
+    return todayFoods.reduce(
+      (acc, f) => ({
+        calories: acc.calories + f.calories,
+        protein: acc.protein + f.protein,
+        fat: acc.fat + f.fat,
+        carbs: acc.carbs + f.carbs,
+      }),
+      { calories: 0, protein: 0, fat: 0, carbs: 0 }
+    )
+  }, [todayFoods])
+
+  const byMeal = useMemo(() => {
+    const map = new Map<MealTiming, FoodEntry[]>()
+    for (const m of MEAL_ORDER) map.set(m, [])
+    for (const f of todayFoods) {
+      map.get(f.mealTiming)?.push(f)
+    }
+    return map
+  }, [todayFoods])
+
+  // 最近使った食品 (全期間の直近20エントリから頻度順)
+  const recents = useMemo<FoodItem[]>(() => {
+    const counts = new Map<string, { food: FoodItem; count: number; lastUsed: number }>()
+    const allFoods = [
+      ...foodDatabase,
+      ...customFoods.map(c => ({
+        id: `custom:${c.id}`,
+        name: c.name,
+        calories: c.calories,
+        protein: c.protein,
+        fat: c.fat,
+        carbs: c.carbs,
+      })),
+    ]
+    const byId = new Map(allFoods.map(f => [f.id, f]))
+    const byName = new Map(allFoods.map(f => [f.name, f]))
+    const recentEntries = [...foods]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 50)
+    for (const e of recentEntries) {
+      const food = (e.foodItemId && byId.get(e.foodItemId)) || byName.get(e.foodName)
+      if (!food) continue
+      const existing = counts.get(food.id)
+      if (existing) {
+        existing.count += 1
+        existing.lastUsed = Math.max(existing.lastUsed, e.createdAt)
+      } else {
+        counts.set(food.id, { food, count: 1, lastUsed: e.createdAt })
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    return Array.from(counts.values())
+      .sort((a, b) => b.count - a.count || b.lastUsed - a.lastUsed)
+      .map(x => x.food)
+  }, [foods, customFoods])
 
-  const handleSelectFood = (food: FoodItem) => {
-    setFoodName(food.name)
-    setSelectedFood(food)
-    setShowSuggestions(false)
+  const openAddDialog = (meal: MealTiming) => {
+    setDialogMeal(meal)
+    setDialogOpen(true)
   }
 
-  // Calculate PFC based on amount
-  const calculatedNutrition = useMemo(() => {
-    if (!selectedFood || !amount) {
-      return { calories: 0, protein: 0, fat: 0, carbs: 0 }
-    }
-    const multiplier = parseFloat(amount) / 100
-    return {
-      calories: selectedFood.calories * multiplier,
-      protein: selectedFood.protein * multiplier,
-      fat: selectedFood.fat * multiplier,
-      carbs: selectedFood.carbs * multiplier,
-    }
-  }, [selectedFood, amount])
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!foodName || !amount || !mealTiming) return
-
-    onAddFood({
-      foodName,
-      amount: parseFloat(amount),
-      calories: calculatedNutrition.calories,
-      protein: calculatedNutrition.protein,
-      fat: calculatedNutrition.fat,
-      carbs: calculatedNutrition.carbs,
-      mealTiming,
-      date,
-    })
-
-    setFoodName('')
-    setAmount('')
-    setSelectedFood(null)
-  }
-
-  const sortedFoods = [...foods].sort((a, b) => b.createdAt - a.createdAt)
+  const kcalPct = goal.calories > 0 ? (totals.calories / goal.calories) * 100 : 0
+  const pPct = goal.protein > 0 ? Math.min(100, (totals.protein / goal.protein) * 100) : 0
+  const fPct = goal.fat > 0 ? Math.min(100, (totals.fat / goal.fat) * 100) : 0
+  const cPct = goal.carbs > 0 ? Math.min(100, (totals.carbs / goal.carbs) * 100) : 0
 
   return (
-    <div className="space-y-4">
-      {/* Form */}
+    <div className="space-y-4 pb-20 relative">
+      {/* 日付切替 */}
+      <FoodDatePicker date={date} onChange={setDate} />
+
+      {/* ダッシュボード: 進捗リング + 設定ボタン */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Food Name with Autocomplete */}
-            <div className="relative space-y-2">
-              <Label className="text-muted-foreground">食品名</Label>
-              <Input
-                ref={inputRef}
-                type="text"
-                placeholder="食品名を入力..."
-                value={foodName}
-                onChange={(e) => {
-                  setFoodName(e.target.value)
-                  setSelectedFood(null)
-                }}
-                onFocus={() => setShowSuggestions(true)}
-                className="bg-secondary border-border text-foreground"
-              />
-              {showSuggestions && suggestions.length > 0 && (
-                <div
-                  ref={suggestionsRef}
-                  className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-border bg-popover shadow-lg animate-in fade-in-0 zoom-in-95"
+          <div className="flex items-center gap-4">
+            <ProgressRing value={totals.calories} target={goal.calories} />
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Flame className="h-3 w-3 text-food" />
+                  摂取 / 目標
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground"
+                  onClick={() => setGoalDialogOpen(true)}
                 >
-                  {suggestions.map((food) => (
-                    <button
-                      key={food.id}
-                      type="button"
-                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
-                      onClick={() => handleSelectFood(food)}
+                  <Settings2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <p
+                className={cn(
+                  'text-lg font-bold',
+                  totals.calories > goal.calories ? 'text-destructive' : 'text-foreground'
+                )}
+              >
+                {Math.round(totals.calories).toLocaleString()}
+                <span className="text-xs text-muted-foreground">
+                  {' / '}
+                  {goal.calories.toLocaleString()} kcal
+                </span>
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {kcalPct.toFixed(0)}%
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* PFC バー */}
+      <Card className="bg-card border-border">
+        <CardContent className="p-4">
+          <h3 className="mb-3 text-sm font-medium text-muted-foreground">PFCバランス</h3>
+          <div className="space-y-3">
+            {[
+              { label: 'P タンパク質', value: totals.protein, target: goal.protein, color: '#60a5fa', pct: pPct },
+              { label: 'F 脂質', value: totals.fat, target: goal.fat, color: '#facc15', pct: fPct },
+              { label: 'C 炭水化物', value: totals.carbs, target: goal.carbs, color: '#a78bfa', pct: cPct },
+            ].map((row) => (
+              <div key={row.label} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">{row.label}</span>
+                  <span className="text-foreground">
+                    <span className="font-semibold">
+                      {row.value.toFixed(1)}
+                    </span>
+                    {' / '}
+                    {row.target}g
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${row.pct}%`,
+                      backgroundColor: row.color,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 食事タイミング別 */}
+      {MEAL_ORDER.map((meal) => {
+        const entries = byMeal.get(meal) || []
+        const mealCalories = entries.reduce((s, e) => s + e.calories, 0)
+        return (
+          <Card key={meal} className="bg-card border-border">
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-foreground">{meal}</h3>
+                  {entries.length > 0 && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {Math.round(mealCalories)} kcal
+                    </span>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-food hover:text-food/80"
+                  onClick={() => openAddDialog(meal)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {entries.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => openAddDialog(meal)}
+                  className="w-full text-center text-xs text-muted-foreground py-2 rounded-md hover:bg-secondary/40 transition-colors"
+                >
+                  タップして追加
+                </button>
+              ) : (
+                <div className="space-y-1">
+                  {entries.map((e) => (
+                    <div
+                      key={e.id}
+                      className="group flex items-center gap-2 rounded-md hover:bg-secondary/40 p-1 -mx-1 transition-colors"
                     >
-                      <span className="text-foreground">{food.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {food.calories}kcal / 100g
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {e.foodName}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {e.amount}g · P{e.protein.toFixed(1)} F{e.fat.toFixed(1)} C{e.carbs.toFixed(1)}
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold text-food shrink-0">
+                        {Math.round(e.calories)}
+                        <span className="text-[10px] text-muted-foreground ml-0.5">kcal</span>
                       </span>
-                    </button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => onDeleteFood(e.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   ))}
                 </div>
               )}
-            </div>
+            </CardContent>
+          </Card>
+        )
+      })}
 
-            {/* Amount */}
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">量 (g)</Label>
-              <Input
-                type="number"
-                inputMode="numeric"
-                placeholder="100"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="bg-secondary border-border text-foreground"
-              />
-            </div>
+      {/* FAB */}
+      <Button
+        type="button"
+        size="icon"
+        className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg z-40 bg-food hover:bg-food/90 text-background"
+        onClick={() => {
+          // 現在時刻から食事タイミングを推測
+          const hour = new Date().getHours()
+          let suggested: MealTiming = '間食'
+          if (hour >= 5 && hour < 10) suggested = '朝食'
+          else if (hour >= 10 && hour < 14) suggested = '昼食'
+          else if (hour >= 17 && hour < 22) suggested = '夕食'
+          setDialogMeal(suggested)
+          setDialogOpen(true)
+        }}
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
 
-            {/* Live PFC Display */}
-            {selectedFood && amount && (
-              <div className="rounded-lg bg-food/10 p-4 space-y-2 animate-in fade-in-0 slide-in-from-top-2">
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  <div>
-                    <p className="text-xs text-muted-foreground">kcal</p>
-                    <p className="text-lg font-bold text-food">{Math.round(calculatedNutrition.calories)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">P</p>
-                    <p className="text-lg font-bold text-food">{calculatedNutrition.protein.toFixed(1)}g</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">F</p>
-                    <p className="text-lg font-bold text-food">{calculatedNutrition.fat.toFixed(1)}g</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">C</p>
-                    <p className="text-lg font-bold text-food">{calculatedNutrition.carbs.toFixed(1)}g</p>
-                  </div>
-                </div>
-              </div>
-            )}
+      <FoodEntryDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        date={date}
+        defaultMealTiming={dialogMeal}
+        recents={recents}
+        customFoods={customFoods}
+        onSubmit={onAddFood}
+        onAddCustomFood={onAddCustomFood}
+      />
 
-            {/* Meal Timing */}
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">食事タイミング</Label>
-              <Select value={mealTiming} onValueChange={(v) => setMealTiming(v as typeof mealTimings[number])}>
-                <SelectTrigger className="bg-secondary border-border text-foreground">
-                  <SelectValue placeholder="選択してください" />
-                </SelectTrigger>
-                <SelectContent>
-                  {mealTimings.map((timing) => (
-                    <SelectItem key={timing} value={timing}>
-                      {timing}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Date */}
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">日付</Label>
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="bg-secondary border-border text-foreground"
-              />
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-food hover:bg-food/90 text-background font-medium"
-              disabled={!foodName || !amount || !mealTiming}
-            >
-              記録する
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Food History */}
-      <Card className="bg-card border-border">
-        <CardContent className="p-4">
-          <h3 className="mb-3 text-sm font-medium text-muted-foreground">食事履歴</h3>
-          {sortedFoods.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">記録がありません</p>
-          ) : (
-            <div className="space-y-2">
-              {sortedFoods.map((f) => (
-                <div
-                  key={f.id}
-                  className="rounded-lg bg-secondary/50 p-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">{f.date}</span>
-                      <span className="font-medium text-foreground">{f.foodName}</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => onDeleteFood(f.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="mt-2 flex items-center gap-3 flex-wrap">
-                    <span className="rounded-full bg-food/10 px-2 py-0.5 text-xs text-food">
-                      {f.mealTiming}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{f.amount}g</span>
-                    <span className="text-xs text-food">{Math.round(f.calories)}kcal</span>
-                    <span className="text-xs text-muted-foreground">
-                      P:{f.protein.toFixed(1)}g F:{f.fat.toFixed(1)}g C:{f.carbs.toFixed(1)}g
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <GoalDialog
+        open={goalDialogOpen}
+        onOpenChange={setGoalDialogOpen}
+        goal={goal}
+        onSave={onSaveGoal}
+      />
     </div>
   )
 }
