@@ -1,19 +1,27 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Trash2 } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Trash2, Smartphone, RefreshCw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { MetricDefinition, MetricEntry } from '@/lib/types'
 import { getIconComponent } from '@/lib/tab-items'
+import {
+  getAvailability,
+  requestAccess,
+  fetchDailySums,
+  type NativeHealthAvailability,
+} from '@/lib/native-health'
+import { cn } from '@/lib/utils'
 
 interface MetricDetailTabProps {
   metric: MetricDefinition
   entries: MetricEntry[] // このメトリクス固有のエントリのみ
   onAddEntry: (entry: Omit<MetricEntry, 'id' | 'createdAt'>) => void
   onDeleteEntry: (id: string) => void
+  onSyncFromHealth?: (metric: MetricDefinition) => Promise<number | null>
 }
 
 function formatValue(value: number, step: number = 1): string {
@@ -39,9 +47,21 @@ export function MetricDetailTab({
   entries,
   onAddEntry,
   onDeleteEntry,
+  onSyncFromHealth,
 }: MetricDetailTabProps) {
   const [value, setValue] = useState('')
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [availability, setAvailability] = useState<NativeHealthAvailability | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncMessage, setSyncMessage] = useState<string | null>(null)
+
+  // 初回のみ: ネイティブヘルスが使えるかチェック
+  useEffect(() => {
+    if (!metric.healthSource) return
+    getAvailability().then(setAvailability).catch(() => {
+      setAvailability({ available: false, platform: 'web' })
+    })
+  }, [metric.healthSource])
 
   const Icon = getIconComponent(metric.icon)
 
@@ -81,6 +101,41 @@ export function MetricDetailTab({
     () => [...entries].sort((a, b) => b.createdAt - a.createdAt),
     [entries]
   )
+
+  const handleSync = async () => {
+    if (!metric.healthSource) return
+    setSyncing(true)
+    setSyncMessage(null)
+    try {
+      const ok = await requestAccess([metric.healthSource])
+      if (!ok) {
+        setSyncMessage('権限が許可されませんでした')
+        setSyncing(false)
+        return
+      }
+      const sums = await fetchDailySums(metric.healthSource, 7)
+      if (sums.length === 0) {
+        setSyncMessage('直近7日間のデータはありません')
+        setSyncing(false)
+        return
+      }
+      // 既存エントリと重複しないように、同日同ソースのものは置換ではなく追加
+      // (手動入力と混在する可能性があるため保守的に)
+      // より洗練されたロジックは呼び出し元に委ねる
+      const added = onSyncFromHealth ? await onSyncFromHealth(metric) : 0
+      setSyncMessage(
+        added !== null && added !== undefined
+          ? `${added}日分を同期しました`
+          : `${sums.length}日分を取得しました`
+      )
+    } catch (err) {
+      setSyncMessage(
+        err instanceof Error ? `同期に失敗: ${err.message}` : '同期に失敗しました'
+      )
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -123,6 +178,50 @@ export function MetricDetailTab({
           )}
         </CardContent>
       </Card>
+
+      {/* ネイティブヘルス同期 (対応メトリクスかつ対応プラットフォーム時のみ) */}
+      {metric.healthSource && availability && (
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Smartphone
+                className="h-4 w-4"
+                style={{ color: availability.available ? metric.color : undefined }}
+              />
+              <h3 className="text-sm font-medium text-muted-foreground">
+                {availability.platform === 'ios'
+                  ? 'ヘルスケアから同期'
+                  : availability.platform === 'android'
+                  ? 'Health Connectから同期'
+                  : '端末データと連携'}
+              </h3>
+            </div>
+            {availability.available ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-2"
+                  disabled={syncing}
+                  onClick={handleSync}
+                >
+                  <RefreshCw className={cn('h-4 w-4', syncing && 'animate-spin')} />
+                  {syncing ? '同期中...' : '直近7日を取得'}
+                </Button>
+                {syncMessage && (
+                  <p className="mt-2 text-xs text-muted-foreground">{syncMessage}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {availability.platform === 'web'
+                  ? 'この機能はネイティブアプリでのみ利用できます。'
+                  : availability.reason || '利用できません'}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* 入力フォーム */}
       <Card className="bg-card border-border">

@@ -29,6 +29,8 @@ import type {
 } from '@/lib/types'
 import { isMetricTabId, getMetricIdFromTabId } from '@/lib/types'
 import type { MetricPreset } from '@/lib/metric-presets'
+import { fetchDailySums } from '@/lib/native-health'
+import { metricPresets } from '@/lib/metric-presets'
 
 export default function AxisApp() {
   const [activeTab, setActiveTab] = useState<TabType>('home')
@@ -50,6 +52,23 @@ export default function AxisApp() {
   // v2 タブ設定 (組み込み + metric:id の統一形式)
   const [tabConfig, setTabConfig] = useLocalStorage<TabConfig[]>('axis-tab-config-v2', [])
   const [onboarded, setOnboarded] = useLocalStorage<boolean>('axis-onboarded', false)
+
+  // 既存メトリクスに healthSource を後付けで補完 (過去バージョンで保存したユーザー向け)
+  useEffect(() => {
+    let needsUpdate = false
+    const updated = metrics.map(m => {
+      if (m.healthSource !== undefined) return m
+      const preset = metricPresets.find(p => p.name === m.name)
+      if (preset?.healthSource) {
+        needsUpdate = true
+        return { ...m, healthSource: preset.healthSource }
+      }
+      return m
+    })
+    if (needsUpdate) {
+      setMetrics(updated)
+    }
+  }, [metrics, setMetrics])
 
   // 一回だけの互換性 migration: v1 config (旧形式) と既存メトリクスから v2 を構築
   useEffect(() => {
@@ -228,6 +247,40 @@ export default function AxisApp() {
     setMetricEntries(prev => prev.filter(e => e.id !== id))
   }, [setMetricEntries])
 
+  // ネイティブヘルスから同期: 直近7日分の日次合算を取得してエントリを upsert
+  const handleSyncMetricFromHealth = useCallback(
+    async (metric: MetricDefinition): Promise<number | null> => {
+      if (!metric.healthSource) return null
+      const sums = await fetchDailySums(metric.healthSource, 7)
+      if (sums.length === 0) return 0
+      const now = Date.now()
+      const newEntries: MetricEntry[] = sums.map(s => ({
+        id: crypto.randomUUID(),
+        metricId: metric.id,
+        value: s.value,
+        date: s.date,
+        memo: 'ヘルスケアから同期',
+        createdAt: now,
+      }))
+      // 同じ日のヘルス由来エントリは置換(手動入力は残す)
+      setMetricEntries(prev => {
+        const syncedDates = new Set(sums.map(s => s.date))
+        const filtered = prev.filter(
+          e =>
+            !(
+              e.metricId === metric.id &&
+              syncedDates.has(e.date) &&
+              e.memo === 'ヘルスケアから同期'
+            )
+        )
+        return [...filtered, ...newEntries]
+      })
+      showToast(`${sums.length}日分を同期しました`, 'bg-foreground')
+      return sums.length
+    },
+    [setMetricEntries, showToast]
+  )
+
   // 組み込みタブを追加
   const handleAddBuiltin = useCallback((id: BuiltinTabId) => {
     setTabConfig(prev => {
@@ -249,6 +302,7 @@ export default function AxisApp() {
       minValue: preset.minValue,
       maxValue: preset.maxValue,
       step: preset.step,
+      healthSource: preset.healthSource,
       createdAt: Date.now(),
     }
     setMetrics(prev => [...prev, newMetric])
@@ -396,6 +450,7 @@ export default function AxisApp() {
             entries={activeMetricEntries}
             onAddEntry={handleAddMetricEntry}
             onDeleteEntry={handleDeleteMetricEntry}
+            onSyncFromHealth={handleSyncMetricFromHealth}
           />
         )}
       </main>

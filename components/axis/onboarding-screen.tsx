@@ -61,6 +61,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           minValue: preset.minValue,
           maxValue: preset.maxValue,
           step: preset.step,
+          healthSource: preset.healthSource,
         })
       }
     }

@@ -57,6 +57,18 @@ export interface BodyEntry {
 // 集計方法: 日次で複数エントリがある場合の集計ルール
 export type MetricAggregation = 'sum' | 'average' | 'latest'
 
+// ネイティブヘルスとの紐付け種別。@capgo/capacitor-health の HealthDataType と対応
+export type HealthSource =
+  | 'steps'
+  | 'heartRate'
+  | 'weight'
+  | 'sleep'
+  | 'oxygenSaturation'
+  | 'bodyTemperature'
+  | 'restingHeartRate'
+  | 'exerciseTime'
+  | 'totalCalories'
+
 export interface MetricDefinition {
   id: string
   name: string // 例: "歩数", "水分", "気分"
@@ -68,6 +80,9 @@ export interface MetricDefinition {
   minValue?: number // 入力の下限 (スケール系 e.g. 1)
   maxValue?: number // 入力の上限 (スケール系 e.g. 10)
   step?: number // 入力ステップ (e.g. 0.1, 1, 100)
+  // ネイティブヘルスから同期できる項目はこれを設定する。
+  // 未設定なら手動入力専用。
+  healthSource?: HealthSource
   createdAt: number
 }
 

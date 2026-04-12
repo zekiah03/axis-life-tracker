@@ -1,4 +1,4 @@
-import type { MetricDefinition, MetricAggregation } from './types'
+import type { MetricDefinition, MetricAggregation, HealthSource } from './types'
 
 // プリセットは「追加する時のテンプレート」。追加後は MetricDefinition として保存される。
 export interface MetricPreset {
@@ -13,6 +13,8 @@ export interface MetricPreset {
   step?: number
   category: '健康' | '運動' | 'メンタル' | '習慣' | '嗜好品'
   description: string
+  // ネイティブアプリで HealthKit / Health Connect から同期可能な項目
+  healthSource?: HealthSource
 }
 
 export const metricPresets: MetricPreset[] = [
@@ -27,6 +29,7 @@ export const metricPresets: MetricPreset[] = [
     step: 100,
     category: '健康',
     description: '日次の歩数',
+    healthSource: 'steps',
   },
   {
     name: '水分摂取',
@@ -48,6 +51,7 @@ export const metricPresets: MetricPreset[] = [
     step: 1,
     category: '健康',
     description: '安静時心拍数',
+    healthSource: 'restingHeartRate',
   },
   {
     name: '体温',
@@ -58,6 +62,7 @@ export const metricPresets: MetricPreset[] = [
     step: 0.1,
     category: '健康',
     description: '体温',
+    healthSource: 'bodyTemperature',
   },
   {
     name: 'SpO2',
@@ -70,6 +75,7 @@ export const metricPresets: MetricPreset[] = [
     maxValue: 100,
     category: '健康',
     description: '血中酸素飽和度',
+    healthSource: 'oxygenSaturation',
   },
 
   // 運動
@@ -82,6 +88,7 @@ export const metricPresets: MetricPreset[] = [
     step: 5,
     category: '運動',
     description: 'ランニング・サイクリングなどの時間',
+    healthSource: 'exerciseTime',
   },
   {
     name: '消費カロリー',
@@ -92,6 +99,7 @@ export const metricPresets: MetricPreset[] = [
     step: 10,
     category: '運動',
     description: '運動での消費カロリー',
+    healthSource: 'totalCalories',
   },
   {
     name: 'ストレッチ',

@@ -15,3 +15,17 @@ node_modules
 .next/
 .DS_Store
 .vercel
+
+# Capacitor / Android
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/captures/
+android/.idea/
+android/app/release/
+android/app/debug/
+*.apk
+*.aab
+*.keystore
+!debug.keystore
