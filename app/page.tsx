@@ -77,14 +77,16 @@ export default function AxisApp() {
     DEFAULT_WIDGET_CONFIG
   )
 
-  // 新しいウィジェットが追加された時にconfigを自動補完
+  // 新しいウィジェットが追加された時にconfigを自動補完 (初回のみ)
   useEffect(() => {
-    const known = new Set(widgetConfig.map(w => w.id))
-    const missing = DEFAULT_WIDGET_CONFIG.filter(w => !known.has(w.id))
-    if (missing.length > 0) {
-      setWidgetConfig([...widgetConfig, ...missing])
-    }
-  }, [widgetConfig, setWidgetConfig])
+    setWidgetConfig(prev => {
+      const known = new Set(prev.map(w => w.id))
+      const missing = DEFAULT_WIDGET_CONFIG.filter(w => !known.has(w.id))
+      if (missing.length > 0) return [...prev, ...missing]
+      return prev
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [prefilledFood, setPrefilledFood] = useState<string | undefined>()
   const [toast, setToast] = useState({ message: '', visible: false, color: 'bg-foreground' })
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -115,124 +117,115 @@ export default function AxisApp() {
   const [tabConfig, setTabConfig] = useLocalStorage<TabConfig[]>('axis-tab-config-v2', [])
   const [onboarded, setOnboarded] = useLocalStorage<boolean>('axis-onboarded', false)
 
-  // 家計簿カテゴリの初期投入 (初回 or 空の場合)
+  // 家計簿カテゴリの初期投入 (初回のみ)
   useEffect(() => {
-    if (moneyCategories.length > 0) return
-    const now = Date.now()
-    const initial: MoneyCategory[] = allDefaultCategories.map((c, i) => ({
-      ...c,
-      id: `cat-${now}-${i}`,
-    }))
-    setMoneyCategories(initial)
-  }, [moneyCategories.length, setMoneyCategories])
-
-  // 既存取引に categoryId を後付け (名前マッチで補完)
-  useEffect(() => {
-    if (moneyCategories.length === 0) return
-    const byName = new Map(moneyCategories.map(c => [c.name, c.id]))
-    let changed = false
-    const updated = transactions.map(t => {
-      if (t.categoryId) return t
-      const id = byName.get(t.category)
-      if (id) {
-        changed = true
-        return { ...t, categoryId: id }
-      }
-      return t
+    setMoneyCategories(prev => {
+      if (prev.length > 0) return prev
+      const now = Date.now()
+      return allDefaultCategories.map((c, i) => ({
+        ...c,
+        id: `cat-${now}-${i}`,
+      }))
     })
-    if (changed) setTransactions(updated)
-  }, [moneyCategories, transactions, setTransactions])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  // 既存メトリクスに healthSource / multiplier を後付けで補完
+  // 既存取引に categoryId を後付け (名前マッチで補完, 初回のみ)
   useEffect(() => {
-    let needsUpdate = false
-    const updated = metrics.map(m => {
-      const preset = metricPresets.find(p => p.name === m.name)
-      if (!preset) return m
-      const next = { ...m }
-      if (next.healthSource === undefined && preset.healthSource) {
-        next.healthSource = preset.healthSource
-        needsUpdate = true
-      }
-      if (next.healthValueMultiplier === undefined && preset.healthValueMultiplier !== undefined) {
-        next.healthValueMultiplier = preset.healthValueMultiplier
-        needsUpdate = true
-      }
-      return next
+    const cats = JSON.parse(window.localStorage.getItem('axis-money-categories') || '[]') as MoneyCategory[]
+    if (cats.length === 0) return
+    const byName = new Map(cats.map((c: MoneyCategory) => [c.name, c.id]))
+    setTransactions(prev => {
+      let changed = false
+      const updated = prev.map(t => {
+        if (t.categoryId) return t
+        const id = byName.get(t.category)
+        if (id) { changed = true; return { ...t, categoryId: id } }
+        return t
+      })
+      return changed ? updated : prev
     })
-    if (needsUpdate) {
-      setMetrics(updated)
-    }
-  }, [metrics, setMetrics])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 既存メトリクスに healthSource / multiplier を後付けで補完 (初回のみ)
+  useEffect(() => {
+    setMetrics(prev => {
+      let needsUpdate = false
+      const updated = prev.map(m => {
+        const preset = metricPresets.find(p => p.name === m.name)
+        if (!preset) return m
+        const next = { ...m }
+        if (next.healthSource === undefined && preset.healthSource) {
+          next.healthSource = preset.healthSource
+          needsUpdate = true
+        }
+        if (next.healthValueMultiplier === undefined && preset.healthValueMultiplier !== undefined) {
+          next.healthValueMultiplier = preset.healthValueMultiplier
+          needsUpdate = true
+        }
+        return next
+      })
+      return needsUpdate ? updated : prev
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 一回だけの互換性 migration: v1 config (旧形式) と既存メトリクスから v2 を構築
+  // 初回マウント時のみ実行
   useEffect(() => {
-    if (onboarded) return
-    if (tabConfig.length > 0) {
-      // 既にv2あり → オンボード済み扱い
-      setOnboarded(true)
-      return
+    // 既にオンボード済みなら何もしない
+    const storedOnboarded = window.localStorage.getItem('axis-onboarded')
+    if (storedOnboarded === 'true') return
+
+    const storedTabConfig = window.localStorage.getItem('axis-tab-config-v2')
+    if (storedTabConfig) {
+      try {
+        const parsed = JSON.parse(storedTabConfig)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setOnboarded(true)
+          return
+        }
+      } catch { /* noop */ }
     }
 
     // 旧形式を読む
-    let migrated = false
     try {
-      const oldRaw = typeof window !== 'undefined' ? window.localStorage.getItem('axis-tab-config') : null
+      const oldRaw = window.localStorage.getItem('axis-tab-config')
       if (oldRaw) {
         const oldConfig = JSON.parse(oldRaw) as Array<{ id: string; visible: boolean }>
+        const storedMetrics = JSON.parse(window.localStorage.getItem('axis-metrics') || '[]')
         const next: TabConfig[] = []
-        // 組み込み: 'metrics' は除外
         for (const entry of oldConfig) {
           if (entry.id === 'metrics') continue
           if (['money', 'workout', 'food', 'sleep', 'body'].includes(entry.id)) {
             next.push({ id: entry.id as BuiltinTabId, visible: entry.visible })
           }
         }
-        // 既存メトリクスを metric:id として末尾に追加
-        for (const m of metrics) {
-          next.push({ id: `metric:${m.id}`, visible: true })
+        for (const m of storedMetrics) {
+          if (m.id) next.push({ id: `metric:${m.id}`, visible: true })
         }
         if (next.length > 0) {
           setTabConfig(next)
           setOnboarded(true)
-          migrated = true
+          return
         }
       }
-    } catch {
-      // noop
-    }
+    } catch { /* noop */ }
 
-    // 旧データが無いがメトリクスだけある場合(念のため)
-    if (!migrated && metrics.length > 0) {
-      const next: TabConfig[] = [
-        { id: 'money', visible: true },
-        { id: 'workout', visible: true },
-        { id: 'food', visible: true },
-        { id: 'sleep', visible: true },
-        { id: 'body', visible: true },
-        ...metrics.map(m => ({ id: `metric:${m.id}` as const, visible: true })),
-      ]
-      setTabConfig(next)
-      setOnboarded(true)
-    }
-  }, [onboarded, tabConfig.length, metrics, setTabConfig, setOnboarded])
+    // 旧データも無い → オンボーディング画面を表示(何もしない)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 非表示タブ / 存在しないメトリクスタブをアクティブにした状態なら home に戻す
+  // tabConfig or activeTab が変わった時のみ
   useEffect(() => {
     if (activeTab === 'home') return
     const conf = tabConfig.find(c => c.id === activeTab)
-    if (!conf || !conf.visible) {
+    if (conf && !conf.visible) {
       setActiveTab('home')
-      return
     }
-    // メトリクスタブの場合、該当メトリクスが存在しなければ戻す
-    if (isMetricTabId(activeTab)) {
-      const metricId = getMetricIdFromTabId(activeTab)
-      if (!metrics.find(m => m.id === metricId)) {
-        setActiveTab('home')
-      }
-    }
-  }, [tabConfig, activeTab, metrics])
+  }, [tabConfig, activeTab])
 
   // Reset scroll on tab change
   useEffect(() => {
@@ -605,13 +598,15 @@ export default function AxisApp() {
     showToast('睡眠を記録しました', 'bg-sleep')
   }, [setSleeps, showToast])
 
-  // 既存の睡眠エントリに source を後付け (migration)
+  // 既存の睡眠エントリに source を後付け (migration, 初回のみ)
   useEffect(() => {
-    const needs = sleeps.some(s => s.source === undefined)
-    if (needs) {
-      setSleeps(sleeps.map(s => (s.source ? s : { ...s, source: 'manual' as const })))
-    }
-  }, [sleeps, setSleeps])
+    setSleeps(prev => {
+      const needs = prev.some(s => s.source === undefined)
+      if (!needs) return prev
+      return prev.map(s => (s.source ? s : { ...s, source: 'manual' as const }))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleDeleteSleep = useCallback((id: string) => {
     setSleeps(prev => prev.filter(s => s.id !== id))
