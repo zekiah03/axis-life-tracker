@@ -18,7 +18,7 @@ interface DashboardTabProps {
   foods: FoodEntry[]
   metrics: MetricDefinition[]
   metricEntries: MetricEntry[]
-  onNavigateToMetrics?: () => void
+  onNavigateToMetric?: (metricId: string) => void
 }
 
 function getIcon(name: string): React.ComponentType<{ className?: string }> {
@@ -52,7 +52,7 @@ export function DashboardTab({
   foods,
   metrics,
   metricEntries,
-  onNavigateToMetrics,
+  onNavigateToMetric,
 }: DashboardTabProps) {
   const today = new Date().toISOString().split('T')[0]
   
@@ -171,18 +171,7 @@ export function DashboardTab({
       {metrics.length > 0 && (
         <Card className="bg-card border-border">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-muted-foreground">今日の数値</h3>
-              {onNavigateToMetrics && (
-                <button
-                  type="button"
-                  onClick={onNavigateToMetrics}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  詳細 →
-                </button>
-              )}
-            </div>
+            <h3 className="mb-3 text-sm font-medium text-muted-foreground">今日の数値</h3>
             <div className="space-y-3">
               {metrics.map((metric) => {
                 const Icon = getIcon(metric.icon)
@@ -192,7 +181,12 @@ export function DashboardTab({
                     ? Math.min(100, (value / metric.target) * 100)
                     : null
                 return (
-                  <div key={metric.id} className="space-y-1.5">
+                  <button
+                    key={metric.id}
+                    type="button"
+                    onClick={() => onNavigateToMetric?.(metric.id)}
+                    className="w-full space-y-1.5 text-left hover:bg-secondary/30 -mx-2 px-2 py-1 rounded transition-colors"
+                  >
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2 min-w-0">
                         <Icon className="h-4 w-4 shrink-0" style={{ color: metric.color }} />
@@ -213,7 +207,7 @@ export function DashboardTab({
                         />
                       </div>
                     )}
-                  </div>
+                  </button>
                 )
               })}
             </div>

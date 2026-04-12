@@ -1,17 +1,18 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { TopBar } from '@/components/axis/top-bar'
 import { BottomNav } from '@/components/axis/bottom-nav'
 import { SearchOverlay } from '@/components/axis/search-overlay'
 import { ToastNotification } from '@/components/axis/toast-notification'
+import { OnboardingScreen } from '@/components/axis/onboarding-screen'
 import { DashboardTab } from '@/components/axis/tabs/dashboard-tab'
 import { MoneyTab } from '@/components/axis/tabs/money-tab'
 import { WorkoutTab } from '@/components/axis/tabs/workout-tab'
 import { FoodTab } from '@/components/axis/tabs/food-tab'
 import { SleepTab } from '@/components/axis/tabs/sleep-tab'
 import { BodyTab } from '@/components/axis/tabs/body-tab'
-import { MetricsTab } from '@/components/axis/tabs/metrics-tab'
+import { MetricDetailTab } from '@/components/axis/tabs/metric-detail-tab'
 import { TabSettingsDialog } from '@/components/axis/tab-settings-dialog'
 import { useLocalStorage } from '@/hooks/use-local-storage'
 import type {
@@ -24,8 +25,10 @@ import type {
   MetricDefinition,
   MetricEntry,
   TabConfig,
+  BuiltinTabId,
 } from '@/lib/types'
-import { defaultTabConfig } from '@/lib/types'
+import { isMetricTabId, getMetricIdFromTabId } from '@/lib/types'
+import type { MetricPreset } from '@/lib/metric-presets'
 
 export default function AxisApp() {
   const [activeTab, setActiveTab] = useState<TabType>('home')
@@ -43,25 +46,79 @@ export default function AxisApp() {
   const [bodies, setBodies] = useLocalStorage<BodyEntry[]>('axis-bodies', [])
   const [metrics, setMetrics] = useLocalStorage<MetricDefinition[]>('axis-metrics', [])
   const [metricEntries, setMetricEntries] = useLocalStorage<MetricEntry[]>('axis-metric-entries', [])
-  const [tabConfig, setTabConfig] = useLocalStorage<TabConfig[]>('axis-tab-config', defaultTabConfig)
 
-  // 過去バージョンで保存された config に新タブが未登録なら追加する(互換性)
+  // v2 タブ設定 (組み込み + metric:id の統一形式)
+  const [tabConfig, setTabConfig] = useLocalStorage<TabConfig[]>('axis-tab-config-v2', [])
+  const [onboarded, setOnboarded] = useLocalStorage<boolean>('axis-onboarded', false)
+
+  // 一回だけの互換性 migration: v1 config (旧形式) と既存メトリクスから v2 を構築
   useEffect(() => {
-    const known = new Set(tabConfig.map(c => c.id))
-    const missing = defaultTabConfig.filter(c => !known.has(c.id))
-    if (missing.length > 0) {
-      setTabConfig([...tabConfig, ...missing])
+    if (onboarded) return
+    if (tabConfig.length > 0) {
+      // 既にv2あり → オンボード済み扱い
+      setOnboarded(true)
+      return
     }
-  }, [tabConfig, setTabConfig])
 
-  // 非表示タブをアクティブにした状態で config が変わったら home に戻す
+    // 旧形式を読む
+    let migrated = false
+    try {
+      const oldRaw = typeof window !== 'undefined' ? window.localStorage.getItem('axis-tab-config') : null
+      if (oldRaw) {
+        const oldConfig = JSON.parse(oldRaw) as Array<{ id: string; visible: boolean }>
+        const next: TabConfig[] = []
+        // 組み込み: 'metrics' は除外
+        for (const entry of oldConfig) {
+          if (entry.id === 'metrics') continue
+          if (['money', 'workout', 'food', 'sleep', 'body'].includes(entry.id)) {
+            next.push({ id: entry.id as BuiltinTabId, visible: entry.visible })
+          }
+        }
+        // 既存メトリクスを metric:id として末尾に追加
+        for (const m of metrics) {
+          next.push({ id: `metric:${m.id}`, visible: true })
+        }
+        if (next.length > 0) {
+          setTabConfig(next)
+          setOnboarded(true)
+          migrated = true
+        }
+      }
+    } catch {
+      // noop
+    }
+
+    // 旧データが無いがメトリクスだけある場合(念のため)
+    if (!migrated && metrics.length > 0) {
+      const next: TabConfig[] = [
+        { id: 'money', visible: true },
+        { id: 'workout', visible: true },
+        { id: 'food', visible: true },
+        { id: 'sleep', visible: true },
+        { id: 'body', visible: true },
+        ...metrics.map(m => ({ id: `metric:${m.id}` as const, visible: true })),
+      ]
+      setTabConfig(next)
+      setOnboarded(true)
+    }
+  }, [onboarded, tabConfig.length, metrics, setTabConfig, setOnboarded])
+
+  // 非表示タブ / 存在しないメトリクスタブをアクティブにした状態なら home に戻す
   useEffect(() => {
     if (activeTab === 'home') return
     const conf = tabConfig.find(c => c.id === activeTab)
-    if (conf && !conf.visible) {
+    if (!conf || !conf.visible) {
       setActiveTab('home')
+      return
     }
-  }, [tabConfig, activeTab])
+    // メトリクスタブの場合、該当メトリクスが存在しなければ戻す
+    if (isMetricTabId(activeTab)) {
+      const metricId = getMetricIdFromTabId(activeTab)
+      if (!metrics.find(m => m.id === metricId)) {
+        setActiveTab('home')
+      }
+    }
+  }, [tabConfig, activeTab, metrics])
 
   // Reset scroll on tab change
   useEffect(() => {
@@ -156,23 +213,7 @@ export default function AxisApp() {
     showToast('体組成を削除しました', 'bg-destructive')
   }, [setBodies, showToast])
 
-  // Metrics handlers
-  const handleAddMetric = useCallback((data: Omit<MetricDefinition, 'id' | 'createdAt'>) => {
-    const newMetric: MetricDefinition = {
-      ...data,
-      id: crypto.randomUUID(),
-      createdAt: Date.now(),
-    }
-    setMetrics(prev => [...prev, newMetric])
-    showToast(`${data.name}を追加しました`, 'bg-foreground')
-  }, [setMetrics, showToast])
-
-  const handleDeleteMetric = useCallback((id: string) => {
-    setMetrics(prev => prev.filter(m => m.id !== id))
-    setMetricEntries(prev => prev.filter(e => e.metricId !== id))
-    showToast('項目を削除しました', 'bg-destructive')
-  }, [setMetrics, setMetricEntries, showToast])
-
+  // Metric handlers
   const handleAddMetricEntry = useCallback((data: Omit<MetricEntry, 'id' | 'createdAt'>) => {
     const newEntry: MetricEntry = {
       ...data,
@@ -187,6 +228,42 @@ export default function AxisApp() {
     setMetricEntries(prev => prev.filter(e => e.id !== id))
   }, [setMetricEntries])
 
+  // 組み込みタブを追加
+  const handleAddBuiltin = useCallback((id: BuiltinTabId) => {
+    setTabConfig(prev => {
+      if (prev.find(c => c.id === id)) return prev
+      return [...prev, { id, visible: true }]
+    })
+  }, [setTabConfig])
+
+  // プリセットから新しいメトリクスを作成してタブも追加
+  const handleAddMetricFromPreset = useCallback((preset: MetricPreset) => {
+    const newMetric: MetricDefinition = {
+      id: crypto.randomUUID(),
+      name: preset.name,
+      unit: preset.unit,
+      icon: preset.icon,
+      color: preset.color,
+      aggregation: preset.aggregation,
+      target: preset.target,
+      minValue: preset.minValue,
+      maxValue: preset.maxValue,
+      step: preset.step,
+      createdAt: Date.now(),
+    }
+    setMetrics(prev => [...prev, newMetric])
+    setTabConfig(prev => [...prev, { id: `metric:${newMetric.id}`, visible: true }])
+    showToast(`${preset.name}を追加しました`, 'bg-foreground')
+  }, [setMetrics, setTabConfig, showToast])
+
+  // メトリクス自体を削除 (タブ設定からも外す、エントリも削除)
+  const handleRemoveMetric = useCallback((metricId: string) => {
+    setMetrics(prev => prev.filter(m => m.id !== metricId))
+    setMetricEntries(prev => prev.filter(e => e.metricId !== metricId))
+    setTabConfig(prev => prev.filter(c => c.id !== `metric:${metricId}`))
+    showToast('項目を削除しました', 'bg-destructive')
+  }, [setMetrics, setMetricEntries, setTabConfig, showToast])
+
   // Search handlers
   const handleSelectFoodDB = useCallback((foodName: string) => {
     setPrefilledFood(foodName)
@@ -196,15 +273,56 @@ export default function AxisApp() {
     setPrefilledFood(undefined)
   }, [])
 
-  // Add button handler - navigates to appropriate form tab
+  // Add button handler
   const handleAddClick = useCallback(() => {
     if (activeTab === 'home') {
-      // Default to money tab when on home
-      setActiveTab('money')
+      // 最初の表示中タブに飛ぶ、無ければ設定を開く
+      const firstVisible = tabConfig.find(c => c.visible)
+      if (firstVisible) {
+        setActiveTab(firstVisible.id as TabType)
+      } else {
+        setIsSettingsOpen(true)
+      }
     }
-    // If already on a form tab, focus on form (scrolls to top)
     scrollRef.current?.scrollTo(0, 0)
-  }, [activeTab])
+  }, [activeTab, tabConfig])
+
+  // オンボーディング完了時: メトリクスとタブ設定を一括で保存
+  const handleOnboardingComplete = useCallback(
+    (builtinConfig: TabConfig[], newMetricsData: Omit<MetricDefinition, 'id' | 'createdAt'>[]) => {
+      const now = Date.now()
+      const createdMetrics: MetricDefinition[] = newMetricsData.map(m => ({
+        ...m,
+        id: crypto.randomUUID(),
+        createdAt: now,
+      }))
+      const metricTabs: TabConfig[] = createdMetrics.map(m => ({
+        id: `metric:${m.id}`,
+        visible: true,
+      }))
+      setMetrics(prev => [...prev, ...createdMetrics])
+      setTabConfig([...builtinConfig, ...metricTabs])
+      setOnboarded(true)
+    },
+    [setMetrics, setTabConfig, setOnboarded]
+  )
+
+  // アクティブタブがメトリクスの場合、該当メトリクスを解決
+  const activeMetric = useMemo(() => {
+    if (!isMetricTabId(activeTab)) return null
+    const metricId = getMetricIdFromTabId(activeTab)
+    return metrics.find(m => m.id === metricId) || null
+  }, [activeTab, metrics])
+
+  const activeMetricEntries = useMemo(() => {
+    if (!activeMetric) return []
+    return metricEntries.filter(e => e.metricId === activeMetric.id)
+  }, [activeMetric, metricEntries])
+
+  // オンボーディング画面
+  if (!onboarded) {
+    return <OnboardingScreen onComplete={handleOnboardingComplete} />
+  }
 
   return (
     <div className="flex min-h-screen max-w-[480px] mx-auto flex-col bg-background">
@@ -225,7 +343,7 @@ export default function AxisApp() {
             foods={foods}
             metrics={metrics}
             metricEntries={metricEntries}
-            onNavigateToMetrics={() => setActiveTab('metrics')}
+            onNavigateToMetric={(metricId) => setActiveTab(`metric:${metricId}`)}
           />
         )}
 
@@ -271,25 +389,33 @@ export default function AxisApp() {
           />
         )}
 
-        {activeTab === 'metrics' && (
-          <MetricsTab
-            metrics={metrics}
-            metricEntries={metricEntries}
-            onAddMetric={handleAddMetric}
-            onDeleteMetric={handleDeleteMetric}
+        {activeMetric && (
+          <MetricDetailTab
+            key={activeMetric.id}
+            metric={activeMetric}
+            entries={activeMetricEntries}
             onAddEntry={handleAddMetricEntry}
             onDeleteEntry={handleDeleteMetricEntry}
           />
         )}
       </main>
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} tabConfig={tabConfig} />
+      <BottomNav
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        tabConfig={tabConfig}
+        metrics={metrics}
+      />
 
       <TabSettingsDialog
         open={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
         tabConfig={tabConfig}
-        onChange={setTabConfig}
+        metrics={metrics}
+        onChangeConfig={setTabConfig}
+        onAddBuiltin={handleAddBuiltin}
+        onAddMetricFromPreset={handleAddMetricFromPreset}
+        onRemoveMetric={handleRemoveMetric}
       />
 
       <SearchOverlay

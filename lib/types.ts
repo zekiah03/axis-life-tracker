@@ -80,26 +80,28 @@ export interface MetricEntry {
   createdAt: number
 }
 
-export type TabType = 'home' | 'money' | 'workout' | 'food' | 'sleep' | 'body' | 'metrics'
+// 「組み込み」カテゴリ: 固有のデータモデルと専用タブUIを持つ
+export type BuiltinTabId = 'money' | 'workout' | 'food' | 'sleep' | 'body'
 
-// Home 以外のタブの表示順・表示/非表示設定
-export type NonHomeTabType = Exclude<TabType, 'home'>
+// タブの識別子。Home / 組み込み / 動的メトリクスの3種
+// メトリクスは "metric:{metricId}" の形式で表現する
+export type TabType = 'home' | BuiltinTabId | `metric:${string}`
+
+export const BUILTIN_TAB_IDS: BuiltinTabId[] = ['money', 'workout', 'food', 'sleep', 'body']
 
 export interface TabConfig {
-  id: NonHomeTabType
+  // 組み込みなら id = BuiltinTabId、メトリクスなら id = "metric:{metricId}"
+  id: Exclude<TabType, 'home'>
   visible: boolean
 }
 
-export const defaultTabOrder: NonHomeTabType[] = [
-  'money',
-  'workout',
-  'food',
-  'sleep',
-  'body',
-  'metrics',
-]
+export function isMetricTabId(id: string): boolean {
+  return id.startsWith('metric:')
+}
 
-export const defaultTabConfig: TabConfig[] = defaultTabOrder.map(id => ({ id, visible: true }))
+export function getMetricIdFromTabId(id: string): string | null {
+  return id.startsWith('metric:') ? id.slice('metric:'.length) : null
+}
 
 export const incomeCategories = ['給料', '副業', '投資', 'ボーナス', 'その他']
 export const expenseCategories = ['食費', '交通費', '住居費', '光熱費', '通信費', '娯楽', '医療費', '衣服', '教育', 'その他']
