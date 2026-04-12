@@ -939,6 +939,8 @@ export default function AxisApp() {
             foodGoal={foodGoal}
             sleeps={sleeps}
             bodies={bodies}
+            activities={activities}
+            mentalEntries={mentalEntries}
             metrics={metrics}
             metricEntries={metricEntries}
             widgetConfig={widgetConfig}

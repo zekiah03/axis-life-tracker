@@ -11,7 +11,7 @@ export interface MetricPreset {
   minValue?: number
   maxValue?: number
   step?: number
-  category: '健康' | '運動' | 'メンタル' | '習慣' | '嗜好品'
+  category: '健康' | '習慣' | '嗜好品'
   description: string
   // ネイティブアプリで HealthKit / Health Connect から同期可能な項目
   healthSource?: HealthSource
@@ -128,89 +128,8 @@ export const metricPresets: MetricPreset[] = [
     healthSource: 'respiratoryRate',
   },
 
-  // 運動
-  {
-    name: '有酸素運動',
-    unit: '分',
-    icon: 'Zap',
-    color: '#f97316',
-    aggregation: 'sum',
-    step: 5,
-    category: '運動',
-    description: 'ランニング・サイクリングなどの時間',
-    healthSource: 'exerciseTime',
-  },
-  {
-    name: '消費カロリー',
-    unit: 'kcal',
-    icon: 'Flame',
-    color: '#f97316',
-    aggregation: 'sum',
-    step: 10,
-    category: '運動',
-    description: '運動での消費カロリー',
-    healthSource: 'totalCalories',
-  },
-  {
-    name: 'ストレッチ',
-    unit: '分',
-    icon: 'StretchHorizontal',
-    color: '#22d3a0',
-    aggregation: 'sum',
-    step: 1,
-    category: '運動',
-    description: '柔軟・ストレッチ時間',
-  },
-
-  // メンタル (1-10スケール)
-  {
-    name: '気分',
-    unit: '点',
-    icon: 'Smile',
-    color: '#22d3a0',
-    aggregation: 'average',
-    minValue: 1,
-    maxValue: 10,
-    step: 1,
-    category: 'メンタル',
-    description: '今日の気分スコア',
-  },
-  {
-    name: 'ストレス',
-    unit: '点',
-    icon: 'Wind',
-    color: '#ec4899',
-    aggregation: 'average',
-    minValue: 1,
-    maxValue: 10,
-    step: 1,
-    category: 'メンタル',
-    description: 'ストレスレベル',
-  },
-  {
-    name: 'エネルギー',
-    unit: '点',
-    icon: 'BatteryCharging',
-    color: '#facc15',
-    aggregation: 'average',
-    minValue: 1,
-    maxValue: 10,
-    step: 1,
-    category: 'メンタル',
-    description: '活力・元気度',
-  },
-  {
-    name: '集中力',
-    unit: '点',
-    icon: 'Target',
-    color: '#60a5fa',
-    aggregation: 'average',
-    minValue: 1,
-    maxValue: 10,
-    step: 1,
-    category: 'メンタル',
-    description: '集中できた度合い',
-  },
+  // 運動 → 有酸素運動・消費カロリー・ストレッチは専用タブ(cardio/stretch)に移行済み
+  // メンタル → 気分・ストレス・エネルギー・集中力は専用タブ(mental)に移行済み
 
   // 習慣
   {
@@ -280,4 +199,4 @@ export const metricPresets: MetricPreset[] = [
   },
 ]
 
-export const metricCategories = ['健康', '運動', 'メンタル', '習慣', '嗜好品'] as const
+export const metricCategories = ['健康', '習慣', '嗜好品'] as const

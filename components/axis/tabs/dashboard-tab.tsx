@@ -14,6 +14,15 @@ import {
   Settings2,
   Star,
   Minus,
+  HeartPulse,
+  StretchHorizontal,
+  Brain,
+  Timer,
+  Route,
+  Smile,
+  Zap,
+  Wind,
+  Target,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,6 +34,8 @@ import type {
   FoodGoal,
   SleepEntry,
   BodyEntry,
+  ActivityEntry,
+  MentalEntry,
   MetricDefinition,
   MetricEntry,
 } from '@/lib/types'
@@ -45,6 +56,8 @@ interface DashboardTabProps {
   foodGoal: FoodGoal
   sleeps: SleepEntry[]
   bodies: BodyEntry[]
+  activities: ActivityEntry[]
+  mentalEntries: MentalEntry[]
   metrics: MetricDefinition[]
   metricEntries: MetricEntry[]
   widgetConfig: WidgetConfig[]
@@ -85,7 +98,7 @@ function formatDuration(minutes: number): string {
 export function DashboardTab(props: DashboardTabProps) {
   const {
     transactions, workouts, workoutSessions, foods, foodGoal,
-    sleeps, bodies, metrics, metricEntries,
+    sleeps, bodies, activities, mentalEntries, metrics, metricEntries,
     widgetConfig, tabConfig, onWidgetConfigChange,
     onNavigateToTab, onNavigateToMetric,
   } = props
@@ -112,6 +125,9 @@ export function DashboardTab(props: DashboardTabProps) {
     'body-latest': 'body',
     'recent-transactions': 'money',
     'recent-workouts': 'workout',
+    'cardio-summary': 'cardio',
+    'stretch-summary': 'stretch',
+    'mental-summary': 'mental',
   }
   // 'metrics-today' と 'streak' はタブに依存しない(横断的)
 
@@ -181,12 +197,32 @@ export function DashboardTab(props: DashboardTabProps) {
 
     const recentTx = [...transactions].sort((a, b) => b.createdAt - a.createdAt).slice(0, 4)
 
+    // Cardio weekly
+    const weeklyCardio = activities.filter(
+      a => a.type === 'cardio' && new Date(a.date) >= sevenDaysAgo
+    )
+    const cardioTotalMin = weeklyCardio.reduce((s, a) => s + a.duration, 0)
+    const cardioTotalDist = weeklyCardio.reduce((s, a) => s + (a.distance || 0), 0)
+    const cardioTotalCal = weeklyCardio.reduce((s, a) => s + (a.calories || 0), 0)
+
+    // Stretch weekly
+    const weeklyStretch = activities.filter(
+      a => a.type === 'stretch' && new Date(a.date) >= sevenDaysAgo
+    )
+    const stretchTotalMin = weeklyStretch.reduce((s, a) => s + a.duration, 0)
+
+    // Mental today
+    const todayMental = mentalEntries.find(e => e.date === today)
+
     return {
       income, expense, balance: income - expense,
       nutrition,
       wkVolume, weeklySessions,
       lastSleep,
       latestBody, prevBody,
+      weeklyCardio, cardioTotalMin, cardioTotalDist, cardioTotalCal,
+      weeklyStretch, stretchTotalMin,
+      todayMental,
       streak,
       recentTx,
     }
@@ -409,6 +445,102 @@ export function DashboardTab(props: DashboardTabProps) {
                     </button>
                   )
                 })}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      }
+
+      case 'cardio-summary':
+        return (
+          <Card key={id} className="bg-card border-border">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-workout/10">
+                <HeartPulse className="h-6 w-6 text-workout" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">
+                  {locale === 'en' ? 'Weekly Cardio' : '今週の有酸素'}
+                </p>
+                <p className="text-2xl font-bold text-workout">
+                  {data.weeklyCardio.length}
+                  <span className="text-sm text-muted-foreground ml-1">{t.home.times}</span>
+                </p>
+                <div className="flex gap-3 mt-0.5 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-0.5">
+                    <Timer className="h-3 w-3" />{data.cardioTotalMin}{t.common.minutes}
+                  </span>
+                  {data.cardioTotalDist > 0 && (
+                    <span className="flex items-center gap-0.5">
+                      <Route className="h-3 w-3" />{data.cardioTotalDist.toFixed(1)}km
+                    </span>
+                  )}
+                  {data.cardioTotalCal > 0 && (
+                    <span className="flex items-center gap-0.5">
+                      <Flame className="h-3 w-3" />{data.cardioTotalCal}kcal
+                    </span>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
+
+      case 'stretch-summary':
+        return (
+          <Card key={id} className="bg-card border-border">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sleep/10">
+                <StretchHorizontal className="h-6 w-6 text-sleep" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">
+                  {locale === 'en' ? 'Weekly Stretch' : '今週のストレッチ'}
+                </p>
+                <p className="text-2xl font-bold text-sleep">
+                  {data.weeklyStretch.length}
+                  <span className="text-sm text-muted-foreground ml-1">{t.home.times}</span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  <Timer className="h-3 w-3 inline mr-0.5" />{data.stretchTotalMin}{t.common.minutes}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )
+
+      case 'mental-summary': {
+        if (!data.todayMental) return null
+        const m = data.todayMental
+        const overall = Math.round(((m.mood + m.energy + (10 - m.stress) + m.focus) / 4) * 10) / 10
+        return (
+          <Card key={id} className="bg-card border-border">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-food/10">
+                <Brain className="h-6 w-6 text-food" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">
+                  {locale === 'en' ? "Today's Mental" : '今日のメンタル'}
+                </p>
+                <p className="text-2xl font-bold text-food">
+                  {overall}
+                  <span className="text-sm text-muted-foreground ml-1">/ 10</span>
+                </p>
+                <div className="flex gap-2 mt-0.5 text-[10px]">
+                  <span style={{ color: '#22d3a0' }}>
+                    <Smile className="h-3 w-3 inline" /> {m.mood}
+                  </span>
+                  <span style={{ color: '#facc15' }}>
+                    <Zap className="h-3 w-3 inline" /> {m.energy}
+                  </span>
+                  <span style={{ color: '#ef4444' }}>
+                    <Wind className="h-3 w-3 inline" /> {m.stress}
+                  </span>
+                  <span style={{ color: '#a78bfa' }}>
+                    <Target className="h-3 w-3 inline" /> {m.focus}
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>

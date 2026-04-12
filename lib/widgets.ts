@@ -8,6 +8,9 @@ export type WidgetId =
   | 'workout-summary'     // 今週のワークアウト (セッションベース)
   | 'sleep-summary'       // 昨夜の睡眠
   | 'body-latest'         // 最新の体組成
+  | 'cardio-summary'      // 今週の有酸素運動
+  | 'stretch-summary'     // 今週のストレッチ
+  | 'mental-summary'      // 今日のメンタル
   | 'metrics-today'       // 今日の数値メトリクス
   | 'streak'              // 連続記録ストリーク
   | 'recent-transactions' // 最近の取引
@@ -33,6 +36,9 @@ export const WIDGET_META: WidgetMeta[] = [
   { id: 'workout-summary', label: '今週のワークアウト', labelEn: 'Weekly Workouts', icon: 'Dumbbell', color: '#f97316' },
   { id: 'sleep-summary', label: '昨夜の睡眠', labelEn: 'Last Night Sleep', icon: 'Moon', color: '#60a5fa' },
   { id: 'body-latest', label: '最新の体組成', labelEn: 'Latest Body Comp', icon: 'Scale', color: '#ec4899' },
+  { id: 'cardio-summary', label: '今週の有酸素', labelEn: 'Weekly Cardio', icon: 'HeartPulse', color: '#f97316' },
+  { id: 'stretch-summary', label: '今週のストレッチ', labelEn: 'Weekly Stretch', icon: 'StretchHorizontal', color: '#60a5fa' },
+  { id: 'mental-summary', label: '今日のメンタル', labelEn: "Today's Mental", icon: 'Brain', color: '#a78bfa' },
   { id: 'metrics-today', label: '今日の数値', labelEn: "Today's Metrics", icon: 'LineChart', color: '#f5f5f7' },
   { id: 'streak', label: '連続記録', labelEn: 'Recording Streak', icon: 'Flame', color: '#f97316' },
   { id: 'recent-transactions', label: '最近の取引', labelEn: 'Recent Transactions', icon: 'ArrowUpDown', color: '#22d3a0' },
@@ -46,6 +52,9 @@ export const DEFAULT_WIDGET_CONFIG: WidgetConfig[] = [
   { id: 'sleep-summary', visible: true },
   { id: 'body-latest', visible: true },
   { id: 'food-pfc', visible: true },
+  { id: 'cardio-summary', visible: true },
+  { id: 'stretch-summary', visible: true },
+  { id: 'mental-summary', visible: true },
   { id: 'metrics-today', visible: true },
   { id: 'streak', visible: true },
   { id: 'recent-transactions', visible: true },
