@@ -29,7 +29,7 @@ import type {
 } from '@/lib/types'
 import { isMetricTabId, getMetricIdFromTabId } from '@/lib/types'
 import type { MetricPreset } from '@/lib/metric-presets'
-import { fetchDailySums, fetchSleepSessions } from '@/lib/native-health'
+import { fetchDailyValues, fetchSleepSessions } from '@/lib/native-health'
 import { metricPresets } from '@/lib/metric-presets'
 import { computeSleepScore } from '@/lib/sleep-score'
 
@@ -54,17 +54,22 @@ export default function AxisApp() {
   const [tabConfig, setTabConfig] = useLocalStorage<TabConfig[]>('axis-tab-config-v2', [])
   const [onboarded, setOnboarded] = useLocalStorage<boolean>('axis-onboarded', false)
 
-  // 既存メトリクスに healthSource を後付けで補完 (過去バージョンで保存したユーザー向け)
+  // 既存メトリクスに healthSource / multiplier を後付けで補完
   useEffect(() => {
     let needsUpdate = false
     const updated = metrics.map(m => {
-      if (m.healthSource !== undefined) return m
       const preset = metricPresets.find(p => p.name === m.name)
-      if (preset?.healthSource) {
+      if (!preset) return m
+      const next = { ...m }
+      if (next.healthSource === undefined && preset.healthSource) {
+        next.healthSource = preset.healthSource
         needsUpdate = true
-        return { ...m, healthSource: preset.healthSource }
       }
-      return m
+      if (next.healthValueMultiplier === undefined && preset.healthValueMultiplier !== undefined) {
+        next.healthValueMultiplier = preset.healthValueMultiplier
+        needsUpdate = true
+      }
+      return next
     })
     if (needsUpdate) {
       setMetrics(updated)
@@ -278,6 +283,53 @@ export default function AxisApp() {
     showToast('体組成を削除しました', 'bg-destructive')
   }, [setBodies, showToast])
 
+  // ネイティブヘルスから体重・体脂肪を取り込む。同日の2データを1エントリにまとめる
+  const handleSyncBodyFromHealth = useCallback(async (): Promise<number> => {
+    const [weights, fats] = await Promise.all([
+      fetchDailyValues('weight', 30, 'latest'),
+      fetchDailyValues('bodyFat', 30, 'latest'),
+    ])
+    if (weights.length === 0 && fats.length === 0) return 0
+
+    // 日付ごとにマージ
+    const byDate = new Map<string, { weight?: number; bodyFat?: number }>()
+    for (const w of weights) {
+      byDate.set(w.date, { ...(byDate.get(w.date) || {}), weight: w.value })
+    }
+    for (const f of fats) {
+      // bodyFat は割合なので、プラグインによっては 0-1 または 0-100 で返る。
+      // 0-1 で返った場合は *100 に直す (値が 1 未満なら割合と判断)
+      const value = f.value <= 1 ? f.value * 100 : f.value
+      byDate.set(f.date, { ...(byDate.get(f.date) || {}), bodyFat: value })
+    }
+
+    const now = Date.now()
+    const newEntries: BodyEntry[] = Array.from(byDate.entries())
+      .filter(([, data]) => data.weight !== undefined) // 体重必須
+      .map(([date, data]) => ({
+        id: crypto.randomUUID(),
+        date,
+        weight: data.weight as number,
+        bodyFat: data.bodyFat,
+        memo: 'ヘルスケアから同期',
+        source: 'health' as const,
+        createdAt: now,
+      }))
+
+    if (newEntries.length === 0) return 0
+
+    // 同日の health 由来エントリは置換、手動入力は残す
+    setBodies(prev => {
+      const syncedDates = new Set(newEntries.map(e => e.date))
+      const filtered = prev.filter(
+        b => !(b.source === 'health' && syncedDates.has(b.date))
+      )
+      return [...filtered, ...newEntries]
+    })
+    showToast(`${newEntries.length}件を同期しました`, 'bg-body')
+    return newEntries.length
+  }, [setBodies, showToast])
+
   // Metric handlers
   const handleAddMetricEntry = useCallback((data: Omit<MetricEntry, 'id' | 'createdAt'>) => {
     const newEntry: MetricEntry = {
@@ -293,17 +345,19 @@ export default function AxisApp() {
     setMetricEntries(prev => prev.filter(e => e.id !== id))
   }, [setMetricEntries])
 
-  // ネイティブヘルスから同期: 直近7日分の日次合算を取得してエントリを upsert
+  // ネイティブヘルスから同期: 直近7日分の日次値を取得してエントリを upsert
   const handleSyncMetricFromHealth = useCallback(
     async (metric: MetricDefinition): Promise<number | null> => {
       if (!metric.healthSource) return null
-      const sums = await fetchDailySums(metric.healthSource, 7)
+      // メトリクスの集計方式を尊重 (sum/latest/average)
+      const sums = await fetchDailyValues(metric.healthSource, 7, metric.aggregation)
       if (sums.length === 0) return 0
       const now = Date.now()
+      const multiplier = metric.healthValueMultiplier ?? 1
       const newEntries: MetricEntry[] = sums.map(s => ({
         id: crypto.randomUUID(),
         metricId: metric.id,
-        value: s.value,
+        value: s.value * multiplier,
         date: s.date,
         memo: 'ヘルスケアから同期',
         createdAt: now,
@@ -349,6 +403,7 @@ export default function AxisApp() {
       maxValue: preset.maxValue,
       step: preset.step,
       healthSource: preset.healthSource,
+      healthValueMultiplier: preset.healthValueMultiplier,
       createdAt: Date.now(),
     }
     setMetrics(prev => [...prev, newMetric])
@@ -487,6 +542,7 @@ export default function AxisApp() {
             bodies={bodies}
             onAddBody={handleAddBody}
             onDeleteBody={handleDeleteBody}
+            onSyncFromHealth={handleSyncBodyFromHealth}
           />
         )}
 

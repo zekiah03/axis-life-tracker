@@ -62,6 +62,7 @@ export interface BodyEntry {
   bodyFat?: number // %
   muscleMass?: number // kg
   memo: string
+  source?: 'manual' | 'health' // health = ヘルスケアから同期
   createdAt: number
 }
 
@@ -72,14 +73,20 @@ export type MetricAggregation = 'sum' | 'average' | 'latest'
 // ネイティブヘルスとの紐付け種別。@capgo/capacitor-health の HealthDataType と対応
 export type HealthSource =
   | 'steps'
+  | 'distance'
+  | 'flightsClimbed'
   | 'heartRate'
+  | 'restingHeartRate'
+  | 'heartRateVariability'
+  | 'respiratoryRate'
   | 'weight'
+  | 'bodyFat'
   | 'sleep'
   | 'oxygenSaturation'
   | 'bodyTemperature'
-  | 'restingHeartRate'
   | 'exerciseTime'
   | 'totalCalories'
+  | 'mindfulness'
 
 export interface MetricDefinition {
   id: string
@@ -95,6 +102,8 @@ export interface MetricDefinition {
   // ネイティブヘルスから同期できる項目はこれを設定する。
   // 未設定なら手動入力専用。
   healthSource?: HealthSource
+  // プラグインが返す生の値(メートル・秒など)をプリセット単位(km・分)に変換するための係数
+  healthValueMultiplier?: number
   createdAt: number
 }
 

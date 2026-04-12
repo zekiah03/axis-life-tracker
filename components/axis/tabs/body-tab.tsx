@@ -1,27 +1,62 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Trash2, TrendingDown, TrendingUp, Minus } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Trash2, TrendingDown, TrendingUp, Minus, Smartphone, RefreshCw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { BodyEntry } from '@/lib/types'
+import {
+  getAvailability,
+  requestAccess,
+  type NativeHealthAvailability,
+} from '@/lib/native-health'
 import { cn } from '@/lib/utils'
 
 interface BodyTabProps {
   bodies: BodyEntry[]
   onAddBody: (body: Omit<BodyEntry, 'id' | 'createdAt'>) => void
   onDeleteBody: (id: string) => void
+  onSyncFromHealth?: () => Promise<number>
 }
 
-export function BodyTab({ bodies, onAddBody, onDeleteBody }: BodyTabProps) {
+export function BodyTab({ bodies, onAddBody, onDeleteBody, onSyncFromHealth }: BodyTabProps) {
   const [weight, setWeight] = useState('')
   const [bodyFat, setBodyFat] = useState('')
   const [muscleMass, setMuscleMass] = useState('')
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [memo, setMemo] = useState('')
+  const [availability, setAvailability] = useState<NativeHealthAvailability | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncMessage, setSyncMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    getAvailability()
+      .then(setAvailability)
+      .catch(() => setAvailability({ available: false, platform: 'web' }))
+  }, [])
+
+  const handleSync = async () => {
+    if (!onSyncFromHealth) return
+    setSyncing(true)
+    setSyncMessage(null)
+    try {
+      const ok = await requestAccess(['weight', 'bodyFat'])
+      if (!ok) {
+        setSyncMessage('権限が許可されませんでした')
+        setSyncing(false)
+        return
+      }
+      const count = await onSyncFromHealth()
+      setSyncMessage(count === 0 ? '直近のデータはありません' : `${count}件を同期しました`)
+    } catch (err) {
+      setSyncMessage(err instanceof Error ? `同期失敗: ${err.message}` : '同期失敗')
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,6 +69,7 @@ export function BodyTab({ bodies, onAddBody, onDeleteBody }: BodyTabProps) {
       bodyFat: bodyFat ? parseFloat(bodyFat) : undefined,
       muscleMass: muscleMass ? parseFloat(muscleMass) : undefined,
       memo,
+      source: 'manual',
     })
 
     setWeight('')
@@ -108,9 +144,54 @@ export function BodyTab({ bodies, onAddBody, onDeleteBody }: BodyTabProps) {
         </Card>
       )}
 
+      {/* ネイティブヘルス同期 */}
+      {availability && (
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Smartphone
+                className="h-4 w-4"
+                style={{ color: availability.available ? '#ec4899' : undefined }}
+              />
+              <h3 className="text-sm font-medium text-muted-foreground">
+                {availability.platform === 'ios'
+                  ? 'ヘルスケアから同期'
+                  : availability.platform === 'android'
+                  ? 'Health Connectから同期'
+                  : 'スマート体組成計から取得'}
+              </h3>
+            </div>
+            {availability.available && onSyncFromHealth ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-2"
+                  disabled={syncing}
+                  onClick={handleSync}
+                >
+                  <RefreshCw className={cn('h-4 w-4', syncing && 'animate-spin')} />
+                  {syncing ? '同期中...' : '体重・体脂肪を取得'}
+                </Button>
+                {syncMessage && (
+                  <p className="mt-2 text-xs text-muted-foreground">{syncMessage}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {availability.platform === 'web'
+                  ? 'この機能はネイティブアプリでのみ利用できます。Withings/Tanita 等のスマート体組成計が書き込んだデータを取り込めます。'
+                  : availability.reason || '利用できません'}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Form */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
+          <h3 className="mb-3 text-sm font-medium text-muted-foreground">手動で記録</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label className="text-muted-foreground">体重 (kg)</Label>
@@ -198,6 +279,11 @@ export function BodyTab({ bodies, onAddBody, onDeleteBody }: BodyTabProps) {
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">{b.date}</span>
                       <span className="font-medium text-body">{b.weight.toFixed(1)} kg</span>
+                      {b.source === 'health' && (
+                        <span className="rounded-full bg-body/20 px-2 py-0.5 text-[10px] text-body">
+                          auto
+                        </span>
+                      )}
                     </div>
                     <Button
                       variant="ghost"

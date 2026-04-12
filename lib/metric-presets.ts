@@ -15,6 +15,9 @@ export interface MetricPreset {
   description: string
   // ネイティブアプリで HealthKit / Health Connect から同期可能な項目
   healthSource?: HealthSource
+  // プラグインが返す raw 値 → プリセット単位への変換係数
+  // 例: distance は m で返るが km で表示したい → 0.001
+  healthValueMultiplier?: number
 }
 
 export const metricPresets: MetricPreset[] = [
@@ -76,6 +79,53 @@ export const metricPresets: MetricPreset[] = [
     category: '健康',
     description: '血中酸素飽和度',
     healthSource: 'oxygenSaturation',
+  },
+  {
+    name: '歩行距離',
+    unit: 'km',
+    icon: 'Route',
+    color: '#22d3a0',
+    aggregation: 'sum',
+    target: 5,
+    step: 0.1,
+    category: '健康',
+    description: '日次の歩行距離',
+    healthSource: 'distance',
+    healthValueMultiplier: 0.001, // m → km
+  },
+  {
+    name: '階段',
+    unit: '階',
+    icon: 'TrendingUp',
+    color: '#22d3a0',
+    aggregation: 'sum',
+    target: 10,
+    step: 1,
+    category: '健康',
+    description: '上った階数',
+    healthSource: 'flightsClimbed',
+  },
+  {
+    name: 'HRV',
+    unit: 'ms',
+    icon: 'Activity',
+    color: '#ec4899',
+    aggregation: 'latest',
+    step: 1,
+    category: '健康',
+    description: '心拍変動 (自律神経の指標)',
+    healthSource: 'heartRateVariability',
+  },
+  {
+    name: '呼吸数',
+    unit: '回/分',
+    icon: 'Wind',
+    color: '#60a5fa',
+    aggregation: 'latest',
+    step: 1,
+    category: '健康',
+    description: '安静時呼吸数',
+    healthSource: 'respiratoryRate',
   },
 
   // 運動
@@ -194,6 +244,7 @@ export const metricPresets: MetricPreset[] = [
     step: 1,
     category: '習慣',
     description: '瞑想・マインドフルネス',
+    healthSource: 'mindfulness',
   },
   {
     name: 'スクリーンタイム',

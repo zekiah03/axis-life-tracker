@@ -58,10 +58,14 @@ function startOfDayIso(daysAgo: number): string {
 }
 
 // 日次集計してラベル付きで返す。ソース側は時系列サンプルなので集計はここで行う。
-// 例: steps のサンプル (1時間ごと) → YYYY-MM-DD ごとに合計
-export async function fetchDailySums(
+// aggregation:
+//   - 'sum'     → その日の合計 (歩数・距離・階数など)
+//   - 'latest'  → その日の最新サンプル値 (体重・HRV・体温など)
+//   - 'average' → その日の平均 (気分など)
+export async function fetchDailyValues(
   source: HealthSource,
-  daysBack: number = 7
+  daysBack: number = 7,
+  aggregation: 'sum' | 'latest' | 'average' = 'sum'
 ): Promise<DailySum[]> {
   if (!Capacitor.isNativePlatform()) return []
   const startDate = startOfDayIso(daysBack - 1)
@@ -74,8 +78,14 @@ export async function fetchDailySums(
       limit: 10000,
       ascending: true,
     })
-    // ローカル日付でバケット化
-    const byDate = new Map<string, number>()
+
+    interface Bucket {
+      sum: number
+      count: number
+      latestValue: number
+      latestTs: number
+    }
+    const byDate = new Map<string, Bucket>()
     for (const sample of samples) {
       const localDate = new Date(sample.startDate)
       const key = [
@@ -83,15 +93,46 @@ export async function fetchDailySums(
         String(localDate.getMonth() + 1).padStart(2, '0'),
         String(localDate.getDate()).padStart(2, '0'),
       ].join('-')
-      byDate.set(key, (byDate.get(key) || 0) + sample.value)
+      const ts = new Date(sample.endDate).getTime()
+      const bucket = byDate.get(key) || { sum: 0, count: 0, latestValue: 0, latestTs: 0 }
+      bucket.sum += sample.value
+      bucket.count += 1
+      if (ts >= bucket.latestTs) {
+        bucket.latestTs = ts
+        bucket.latestValue = sample.value
+      }
+      byDate.set(key, bucket)
     }
+
     return Array.from(byDate.entries())
-      .map(([date, value]) => ({ date, value }))
+      .map(([date, bucket]) => {
+        let value: number
+        switch (aggregation) {
+          case 'latest':
+            value = bucket.latestValue
+            break
+          case 'average':
+            value = bucket.sum / Math.max(1, bucket.count)
+            break
+          case 'sum':
+          default:
+            value = bucket.sum
+        }
+        return { date, value }
+      })
       .sort((a, b) => a.date.localeCompare(b.date))
   } catch (err) {
     console.error('[native-health] readSamples failed', err)
     throw err
   }
+}
+
+// 後方互換エイリアス (sum固定)
+export async function fetchDailySums(
+  source: HealthSource,
+  daysBack: number = 7
+): Promise<DailySum[]> {
+  return fetchDailyValues(source, daysBack, 'sum')
 }
 
 // --- 睡眠セッション取得 ---
