@@ -14,6 +14,7 @@ import { SleepTab } from '@/components/axis/tabs/sleep-tab'
 import { BodyTab } from '@/components/axis/tabs/body-tab'
 import { MetricDetailTab } from '@/components/axis/tabs/metric-detail-tab'
 import { TabSettingsDialog } from '@/components/axis/tab-settings-dialog'
+import { DataManagementDialog } from '@/components/axis/data-management-dialog'
 import { useLocalStorage } from '@/hooks/use-local-storage'
 import type {
   TabType,
@@ -45,6 +46,7 @@ export default function AxisApp() {
   const [activeTab, setActiveTab] = useState<TabType>('home')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isDataMgmtOpen, setIsDataMgmtOpen] = useState(false)
   const [prefilledFood, setPrefilledFood] = useState<string | undefined>()
   const [toast, setToast] = useState({ message: '', visible: false, color: 'bg-foreground' })
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -857,6 +859,18 @@ export default function AxisApp() {
         onAddBuiltin={handleAddBuiltin}
         onAddMetricFromPreset={handleAddMetricFromPreset}
         onRemoveMetric={handleRemoveMetric}
+        onOpenDataManagement={() => setIsDataMgmtOpen(true)}
+      />
+
+      <DataManagementDialog
+        open={isDataMgmtOpen}
+        onOpenChange={setIsDataMgmtOpen}
+        onAfterImport={() => {
+          // インポート成功後はフルリロードして全stateを確実に再読み込み
+          if (typeof window !== 'undefined') {
+            window.location.reload()
+          }
+        }}
       />
 
       <SearchOverlay

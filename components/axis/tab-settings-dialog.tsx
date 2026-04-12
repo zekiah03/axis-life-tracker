@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronUp, ChevronDown, Plus, X, Trash2 } from 'lucide-react'
+import { ChevronUp, ChevronDown, Plus, X, Trash2, Database } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ interface TabSettingsDialogProps {
   onAddBuiltin: (id: BuiltinTabId) => void
   onAddMetricFromPreset: (preset: MetricPreset) => void
   onRemoveMetric: (metricId: string) => void
+  onOpenDataManagement?: () => void
 }
 
 type View = 'list' | 'add'
@@ -39,6 +40,7 @@ export function TabSettingsDialog({
   onAddBuiltin,
   onAddMetricFromPreset,
   onRemoveMetric,
+  onOpenDataManagement,
 }: TabSettingsDialogProps) {
   const [view, setView] = useState<View>('list')
 
@@ -205,7 +207,7 @@ export function TabSettingsDialog({
               </div>
             )}
 
-            <div className="pt-2 border-t border-border">
+            <div className="pt-2 border-t border-border space-y-2">
               <Button
                 type="button"
                 variant="outline"
@@ -217,7 +219,22 @@ export function TabSettingsDialog({
                 <Plus className="h-4 w-4" />
                 項目を追加
               </Button>
-              <p className="mt-2 text-xs text-muted-foreground text-center">
+              {onOpenDataManagement && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    onOpenChange(false)
+                    onOpenDataManagement()
+                  }}
+                  className="w-full gap-1 text-muted-foreground"
+                >
+                  <Database className="h-4 w-4" />
+                  データの管理
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground text-center">
                 表示中: {visibleCount} / {tabConfig.length}
               </p>
             </div>
