@@ -69,6 +69,24 @@ export interface WorkoutSession {
   endedAt?: number // UNIX ms (アクティブ中は undefined)
   exercises: SessionExercise[]
   notes?: string
+  routineId?: string // どのルーティンから開始したか
+}
+
+// ワークアウトルーティン (テンプレート)
+// 保存しておくと1タップでセッションを開始できる
+export interface RoutineExercise {
+  exerciseName: string
+  muscleGroup: string
+  defaultSets: number // デフォルトセット数
+  defaultReps: number // デフォルトレップ数
+  defaultWeight: number // デフォルト重量 (0 = 未設定)
+}
+
+export interface WorkoutRoutine {
+  id: string
+  name: string // 例: "Push Day A", "Leg Day"
+  exercises: RoutineExercise[]
+  createdAt: number
 }
 
 export interface FoodEntry {
@@ -97,7 +115,8 @@ export interface Recipe {
   id: string
   name: string
   items: RecipeItem[]
-  // 集計値 (計算済み、表示用キャッシュ)
+  servings: number // 何人前のレシピか (デフォルト1)
+  // 集計値 (計算済み、表示用キャッシュ、servings分の合計)
   totalCalories: number
   totalProtein: number
   totalFat: number

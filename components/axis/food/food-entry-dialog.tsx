@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Search, Plus, Clock, ArrowLeft, BookMarked, Barcode, Loader2 } from 'lucide-react'
+import { Search, Plus, Clock, ArrowLeft, BookMarked, Barcode, Loader2, Star } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -27,9 +27,11 @@ interface FoodEntryDialogProps {
   recents: FoodItem[]
   customFoods: CustomFoodItem[]
   recipes: Recipe[]
+  favoriteFoodIds: string[]
   onSubmit: (entry: Omit<FoodEntry, 'id' | 'createdAt'>) => void
-  onSubmitRecipe: (recipe: Recipe, mealTiming: MealTiming, date: string) => void
+  onSubmitRecipe: (recipe: Recipe, mealTiming: MealTiming, date: string, servings: number) => void
   onAddCustomFood: (food: Omit<CustomFoodItem, 'id' | 'createdAt'>) => CustomFoodItem
+  onToggleFavorite: (foodId: string) => void
 }
 
 type View = 'select' | 'amount' | 'create' | 'recipes'
@@ -43,9 +45,11 @@ export function FoodEntryDialog({
   recents,
   customFoods,
   recipes = [],
+  favoriteFoodIds = [],
   onSubmit,
   onSubmitRecipe,
   onAddCustomFood,
+  onToggleFavorite,
 }: FoodEntryDialogProps) {
   const [view, setView] = useState<View>('select')
   const [selectTab, setSelectTab] = useState<SelectTab>('foods')
@@ -55,6 +59,7 @@ export function FoodEntryDialog({
   const [mealTiming, setMealTiming] = useState<MealTiming>(defaultMealTiming)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [barcodeLookupLoading, setBarcodeLookupLoading] = useState(false)
+  const [recipeServings, setRecipeServings] = useState('1')
   const [barcodeLookupError, setBarcodeLookupError] = useState<string | null>(null)
 
   // カスタム食品の新規作成フォーム
@@ -238,7 +243,8 @@ export function FoodEntryDialog({
   }
 
   const handleSelectRecipe = (recipe: Recipe) => {
-    onSubmitRecipe(recipe, mealTiming, date)
+    const servings = parseFloat(recipeServings) || 1
+    onSubmitRecipe(recipe, mealTiming, date, servings)
     onOpenChange(false)
   }
 
@@ -319,6 +325,28 @@ export function FoodEntryDialog({
               {/* 食品タブのコンテンツ */}
               {selectTab === 'foods' && (
                 <div className="space-y-1 max-h-[50vh] overflow-y-auto">
+                  {query.trim() === '' && favoriteFoodIds.length > 0 && (
+                    <>
+                      <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground px-1 flex items-center gap-1">
+                        <Star className="h-3 w-3 fill-food text-food" />
+                        お気に入り
+                      </h4>
+                      {favoriteFoodIds.map(fid => {
+                        const food = allFoods.find(f => f.id === fid)
+                        if (!food) return null
+                        return (
+                          <FoodRow
+                            key={`fav-${food.id}`}
+                            food={food}
+                            onClick={() => handleSelect(food)}
+                            isFavorite
+                            onToggleFavorite={() => onToggleFavorite(food.id)}
+                          />
+                        )
+                      })}
+                    </>
+                  )}
+
                   {query.trim() === '' && recents.length > 0 && (
                     <>
                       <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground px-1 flex items-center gap-1">
@@ -326,7 +354,13 @@ export function FoodEntryDialog({
                         最近使った食品
                       </h4>
                       {recents.slice(0, 8).map((food) => (
-                        <FoodRow key={food.id} food={food} onClick={() => handleSelect(food)} />
+                        <FoodRow
+                          key={food.id}
+                          food={food}
+                          onClick={() => handleSelect(food)}
+                          isFavorite={favoriteFoodIds.includes(food.id)}
+                          onToggleFavorite={() => onToggleFavorite(food.id)}
+                        />
                       ))}
                     </>
                   )}
@@ -339,7 +373,13 @@ export function FoodEntryDialog({
                         </p>
                       ) : (
                         searchResults.map((food) => (
-                          <FoodRow key={food.id} food={food} onClick={() => handleSelect(food)} />
+                          <FoodRow
+                            key={food.id}
+                            food={food}
+                            onClick={() => handleSelect(food)}
+                            isFavorite={favoriteFoodIds.includes(food.id)}
+                            onToggleFavorite={() => onToggleFavorite(food.id)}
+                          />
                         ))
                       )}
                     </>
@@ -369,7 +409,28 @@ export function FoodEntryDialog({
               {/* レシピタブのコンテンツ */}
               {selectTab === 'recipes' && (
                 <div className="space-y-2 max-h-[55vh] overflow-y-auto">
-                  {/* 食事タイミングの選択 */}
+                  {/* サービング数 + 食事タイミング */}
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">何人前?</Label>
+                    <div className="flex gap-2 items-center">
+                      {['0.5', '1', '1.5', '2'].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setRecipeServings(v)}
+                          className={cn(
+                            'flex-1 rounded-md border py-1.5 text-xs font-medium transition-colors',
+                            recipeServings === v
+                              ? 'bg-food/20 border-food text-food'
+                              : 'bg-secondary border-border text-muted-foreground'
+                          )}
+                        >
+                          {v}人前
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">追加先</Label>
                     <div className="grid grid-cols-4 gap-1">
@@ -398,29 +459,37 @@ export function FoodEntryDialog({
                         : '該当するレシピがありません'}
                     </p>
                   ) : (
-                    filteredRecipes.map((recipe) => (
-                      <button
-                        key={recipe.id}
-                        type="button"
-                        onClick={() => handleSelectRecipe(recipe)}
-                        className="w-full text-left rounded-lg border border-border bg-secondary/40 p-3 hover:bg-secondary transition-colors"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-foreground truncate">
-                            {recipe.name}
-                          </span>
-                          <span className="text-xs font-semibold text-food shrink-0 ml-2">
-                            {Math.round(recipe.totalCalories)} kcal
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                          <span>{recipe.items.length} 品</span>
-                          <span>
-                            P{recipe.totalProtein.toFixed(0)} F{recipe.totalFat.toFixed(0)} C{recipe.totalCarbs.toFixed(0)}
-                          </span>
-                        </div>
-                      </button>
-                    ))
+                    filteredRecipes.map((recipe) => {
+                      const s = parseFloat(recipeServings) || 1
+                      const recipeServingBase = recipe.servings || 1
+                      const multiplier = s / recipeServingBase
+                      return (
+                        <button
+                          key={recipe.id}
+                          type="button"
+                          onClick={() => handleSelectRecipe(recipe)}
+                          className="w-full text-left rounded-lg border border-border bg-secondary/40 p-3 hover:bg-secondary transition-colors"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-foreground truncate">
+                              {recipe.name}
+                            </span>
+                            <span className="text-xs font-semibold text-food shrink-0 ml-2">
+                              {Math.round(recipe.totalCalories * multiplier)} kcal
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                            <span>{recipe.items.length} 品</span>
+                            <span>
+                              P{(recipe.totalProtein * multiplier).toFixed(0)} F{(recipe.totalFat * multiplier).toFixed(0)} C{(recipe.totalCarbs * multiplier).toFixed(0)}
+                            </span>
+                            {multiplier !== 1 && (
+                              <span className="text-food">x{multiplier.toFixed(1)}</span>
+                            )}
+                          </div>
+                        </button>
+                      )
+                    })
                   )}
                 </div>
               )}
@@ -661,17 +730,46 @@ function categoryLabel(cat: string): string {
   return map[cat] || cat
 }
 
-function FoodRow({ food, onClick }: { food: FoodItem; onClick: () => void }) {
+function FoodRow({
+  food,
+  onClick,
+  isFavorite,
+  onToggleFavorite,
+}: {
+  food: FoodItem
+  onClick: () => void
+  isFavorite?: boolean
+  onToggleFavorite?: () => void
+}) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left hover:bg-secondary/60 transition-colors"
-    >
-      <span className="text-sm text-foreground truncate">{food.name}</span>
-      <span className="text-[10px] text-muted-foreground shrink-0 ml-2">
-        {food.calories}kcal{food.category === 'dish' ? '/1食' : '/100g'}
-      </span>
-    </button>
+    <div className="flex items-center rounded-md hover:bg-secondary/60 transition-colors">
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex flex-1 items-center justify-between px-2 py-2 text-left min-w-0"
+      >
+        <span className="text-sm text-foreground truncate">{food.name}</span>
+        <span className="text-[10px] text-muted-foreground shrink-0 ml-2">
+          {food.calories}kcal{food.category === 'dish' ? '/1食' : '/100g'}
+        </span>
+      </button>
+      {onToggleFavorite && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleFavorite()
+          }}
+          className="shrink-0 p-1.5 mr-1"
+        >
+          <Star
+            className={cn(
+              'h-4 w-4 transition-colors',
+              isFavorite ? 'fill-food text-food' : 'text-muted-foreground/40 hover:text-food'
+            )}
+          />
+        </button>
+      )}
+    </div>
   )
 }

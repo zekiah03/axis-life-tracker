@@ -46,6 +46,7 @@ export function RecipeBuilderDialog({
 }: RecipeBuilderDialogProps) {
   const [view, setView] = useState<View>('form')
   const [name, setName] = useState('')
+  const [servings, setServings] = useState('1')
   const [items, setItems] = useState<RecipeItem[]>([])
   const [query, setQuery] = useState('')
   const [amountDraft, setAmountDraft] = useState<Record<string, string>>({})
@@ -68,9 +69,11 @@ export function RecipeBuilderDialog({
     if (open) {
       if (editing) {
         setName(editing.name)
+        setServings(String(editing.servings || 1))
         setItems(editing.items)
       } else {
         setName('')
+        setServings('1')
         setItems([])
       }
       setView('form')
@@ -126,6 +129,7 @@ export function RecipeBuilderDialog({
     onSave({
       name: name.trim(),
       items,
+      servings: parseFloat(servings) || 1,
       totalCalories: totals.calories,
       totalProtein: totals.protein,
       totalFat: totals.fat,
@@ -148,15 +152,28 @@ export function RecipeBuilderDialog({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">レシピ名</Label>
-              <Input
-                type="text"
-                placeholder="例: 鶏胸肉のトマト煮 (2人前)"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="bg-secondary border-border text-foreground"
-              />
+            <div className="flex gap-2">
+              <div className="flex-1 space-y-2">
+                <Label className="text-muted-foreground">レシピ名</Label>
+                <Input
+                  type="text"
+                  placeholder="例: 鶏胸肉のトマト煮"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="bg-secondary border-border text-foreground"
+                />
+              </div>
+              <div className="w-24 space-y-2">
+                <Label className="text-muted-foreground">何人前</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.5"
+                  value={servings}
+                  onChange={(e) => setServings(e.target.value)}
+                  className="bg-secondary border-border text-foreground text-center"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

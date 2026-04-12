@@ -26,14 +26,16 @@ interface FoodTabProps {
   goal: FoodGoal
   customFoods: CustomFoodItem[]
   recipes: Recipe[]
+  favoriteFoodIds: string[]
   prefilledFood?: string
   onAddFood: (entry: Omit<FoodEntry, 'id' | 'createdAt'>) => void
   onDeleteFood: (id: string) => void
   onSaveGoal: (goal: FoodGoal) => void
   onAddCustomFood: (food: Omit<CustomFoodItem, 'id' | 'createdAt'>) => CustomFoodItem
-  onApplyRecipe: (recipe: Recipe, mealTiming: '朝食' | '昼食' | '夕食' | '間食', date: string) => void
+  onApplyRecipe: (recipe: Recipe, mealTiming: '朝食' | '昼食' | '夕食' | '間食', date: string, servings: number) => void
   onSaveRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt'>, editingId?: string) => void
   onDeleteRecipe: (id: string) => void
+  onToggleFavoriteFood: (foodId: string) => void
   onClearPrefill?: () => void
 }
 
@@ -94,6 +96,7 @@ export function FoodTab({
   goal,
   customFoods,
   recipes,
+  favoriteFoodIds,
   prefilledFood,
   onAddFood,
   onDeleteFood,
@@ -102,6 +105,7 @@ export function FoodTab({
   onApplyRecipe,
   onSaveRecipe,
   onDeleteRecipe,
+  onToggleFavoriteFood,
   onClearPrefill,
 }: FoodTabProps) {
   const [date, setDate] = useState(getToday())
@@ -385,9 +389,11 @@ export function FoodTab({
         recents={recents}
         customFoods={customFoods}
         recipes={recipes}
+        favoriteFoodIds={favoriteFoodIds}
         onSubmit={onAddFood}
         onSubmitRecipe={onApplyRecipe}
         onAddCustomFood={onAddCustomFood}
+        onToggleFavorite={onToggleFavoriteFood}
       />
 
       <GoalDialog

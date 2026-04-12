@@ -10,10 +10,13 @@ import {
   Calendar,
   ChevronDown,
   ChevronRight,
+  ListChecks,
+  Edit3,
+  Play,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import type { WorkoutSession, WorkoutEntry } from '@/lib/types'
+import type { WorkoutSession, WorkoutEntry, WorkoutRoutine } from '@/lib/types'
 import {
   sessionVolume,
   sessionSetCount,
@@ -23,17 +26,22 @@ import {
   estimate1RM,
 } from '@/lib/workout-stats'
 import { ActiveSession } from '@/components/axis/workout/active-session'
+import { RoutineDialog } from '@/components/axis/workout/routine-dialog'
 import { cn } from '@/lib/utils'
 
 interface WorkoutTabProps {
   sessions: WorkoutSession[]
-  legacyEntries: WorkoutEntry[] // 旧モデル(表示のみ)
+  legacyEntries: WorkoutEntry[]
+  routines: WorkoutRoutine[]
   onStartSession: () => WorkoutSession
+  onStartFromRoutine: (routine: WorkoutRoutine) => void
   onUpdateSession: (session: WorkoutSession) => void
   onFinishSession: (session: WorkoutSession) => void
   onCancelSession: (id: string) => void
   onDeleteSession: (id: string) => void
   onDeleteLegacy: (id: string) => void
+  onSaveRoutine: (routine: Omit<WorkoutRoutine, 'id' | 'createdAt'>, editingId?: string) => void
+  onDeleteRoutine: (id: string) => void
 }
 
 function formatDayLabel(dateStr: string): string {
@@ -54,14 +62,20 @@ function formatDuration(startMs: number, endMs: number): string {
 export function WorkoutTab({
   sessions,
   legacyEntries,
+  routines,
   onStartSession,
+  onStartFromRoutine,
   onUpdateSession,
   onFinishSession,
   onCancelSession,
   onDeleteSession,
   onDeleteLegacy,
+  onSaveRoutine,
+  onDeleteRoutine,
 }: WorkoutTabProps) {
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
+  const [routineDialogOpen, setRoutineDialogOpen] = useState(false)
+  const [editingRoutine, setEditingRoutine] = useState<WorkoutRoutine | null>(null)
 
   const activeSession = useMemo(
     () => sessions.find(s => !s.endedAt) || null,
@@ -101,13 +115,99 @@ export function WorkoutTab({
         type="button"
         size="lg"
         className="w-full h-14 bg-workout hover:bg-workout/90 text-background gap-2 text-base font-semibold"
-        onClick={() => {
-          onStartSession()
-        }}
+        onClick={() => onStartSession()}
       >
         <Plus className="h-5 w-5" />
         ワークアウトを開始
       </Button>
+
+      {/* ルーティン */}
+      <Card className="bg-card border-border">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <ListChecks className="h-4 w-4 text-workout" />
+              <h3 className="text-sm font-medium text-muted-foreground">ルーティン</h3>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs text-muted-foreground"
+              onClick={() => {
+                setEditingRoutine(null)
+                setRoutineDialogOpen(true)
+              }}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              作成
+            </Button>
+          </div>
+          {routines.length === 0 ? (
+            <p className="text-center text-xs text-muted-foreground py-3">
+              ルーティンを作成すると1タップでワークアウトを開始できます
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {routines.map((routine) => (
+                <div
+                  key={routine.id}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-secondary/40 p-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{routine.name}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {routine.exercises.map(e => e.exerciseName).join(' / ')}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setEditingRoutine(routine)
+                      setRoutineDialogOpen(true)
+                    }}
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    onClick={() => {
+                      if (confirm(`「${routine.name}」を削除しますか?`)) onDeleteRoutine(routine.id)
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 gap-1 bg-workout hover:bg-workout/90 text-background text-xs"
+                    onClick={() => onStartFromRoutine(routine)}
+                  >
+                    <Play className="h-3.5 w-3.5" />
+                    開始
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <RoutineDialog
+        open={routineDialogOpen}
+        onOpenChange={setRoutineDialogOpen}
+        editing={editingRoutine}
+        onSave={(data, editingId) => {
+          onSaveRoutine(data, editingId)
+          setEditingRoutine(null)
+        }}
+      />
 
       {/* 週次サマリー */}
       {finishedSessions.length > 0 && (

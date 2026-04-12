@@ -29,6 +29,9 @@ import type {
   Transaction,
   WorkoutEntry,
   WorkoutSession,
+  WorkoutRoutine,
+  SessionExercise,
+  WorkoutSet,
   FoodEntry,
   FoodGoal,
   CustomFoodItem,
@@ -92,6 +95,8 @@ export default function AxisApp() {
   const [budgets, setBudgets] = useLocalStorage<Budget[]>('axis-budgets', [])
   const [workouts, setWorkouts] = useLocalStorage<WorkoutEntry[]>('axis-workouts', [])
   const [workoutSessions, setWorkoutSessions] = useLocalStorage<WorkoutSession[]>('axis-workout-sessions', [])
+  const [workoutRoutines, setWorkoutRoutines] = useLocalStorage<WorkoutRoutine[]>('axis-workout-routines', [])
+  const [favoriteFoods, setFavoriteFoods] = useLocalStorage<string[]>('axis-favorite-foods', []) // FoodItem.id の配列
   const [foods, setFoods] = useLocalStorage<FoodEntry[]>('axis-foods', [])
   const [foodGoal, setFoodGoal] = useLocalStorage<FoodGoal>('axis-food-goal', {
     calories: 2200,
@@ -415,6 +420,64 @@ export default function AxisApp() {
     showToast('セッションを削除しました', 'bg-destructive')
   }, [setWorkoutSessions, showToast])
 
+  // ルーティンからワークアウトを開始 (テンプレートの種目・セットを自動投入)
+  const handleStartFromRoutine = useCallback((routine: WorkoutRoutine) => {
+    const now = Date.now()
+    const exercises: SessionExercise[] = routine.exercises.map((re) => ({
+      id: crypto.randomUUID(),
+      exerciseName: re.exerciseName,
+      muscleGroup: re.muscleGroup,
+      order: 0,
+      sets: Array.from({ length: re.defaultSets }, () => ({
+        id: crypto.randomUUID(),
+        weight: re.defaultWeight,
+        reps: re.defaultReps,
+        completed: false,
+      })),
+    }))
+    const session: WorkoutSession = {
+      id: crypto.randomUUID(),
+      date: new Date().toISOString().split('T')[0],
+      name: routine.name,
+      startedAt: now,
+      exercises,
+      routineId: routine.id,
+    }
+    setWorkoutSessions(prev => [...prev, session])
+    showToast(`${routine.name} を開始しました`, 'bg-workout')
+  }, [setWorkoutSessions, showToast])
+
+  // ルーティン CRUD
+  const handleSaveRoutine = useCallback(
+    (data: Omit<WorkoutRoutine, 'id' | 'createdAt'>, editingId?: string) => {
+      if (editingId) {
+        setWorkoutRoutines(prev =>
+          prev.map(r => (r.id === editingId ? { ...r, ...data } : r))
+        )
+        showToast('ルーティンを更新しました', 'bg-workout')
+      } else {
+        setWorkoutRoutines(prev => [
+          ...prev,
+          { ...data, id: crypto.randomUUID(), createdAt: Date.now() },
+        ])
+        showToast('ルーティンを作成しました', 'bg-workout')
+      }
+    },
+    [setWorkoutRoutines, showToast]
+  )
+
+  const handleDeleteRoutine = useCallback((id: string) => {
+    setWorkoutRoutines(prev => prev.filter(r => r.id !== id))
+    showToast('ルーティンを削除しました', 'bg-destructive')
+  }, [setWorkoutRoutines, showToast])
+
+  // お気に入り食品トグル
+  const handleToggleFavoriteFood = useCallback((foodId: string) => {
+    setFavoriteFoods(prev =>
+      prev.includes(foodId) ? prev.filter(id => id !== foodId) : [...prev, foodId]
+    )
+  }, [setFavoriteFoods])
+
   // Food handlers
   const handleAddFood = useCallback((data: Omit<FoodEntry, 'id' | 'createdAt'>) => {
     const newFood: FoodEntry = {
@@ -487,8 +550,11 @@ export default function AxisApp() {
     (
       recipe: Recipe,
       mealTiming: '朝食' | '昼食' | '夕食' | '間食',
-      date: string
+      date: string,
+      servings: number = 1
     ) => {
+      const recipeServings = recipe.servings || 1
+      const scale = servings / recipeServings
       // 全食品 (builtin + custom) でアイテムを解決して栄養を計算
       const byId = new Map<string, { calories: number; protein: number; fat: number; carbs: number; category?: string }>()
       for (const f of foodDatabase) {
@@ -502,12 +568,13 @@ export default function AxisApp() {
       for (const item of recipe.items) {
         const food = byId.get(item.foodItemId)
         if (!food) continue
-        const multiplier = item.amount / 100
+        const multiplier = (item.amount / 100) * scale
+        const scaledAmount = item.amount * scale
         newEntries.push({
           id: crypto.randomUUID(),
           foodName: item.foodName,
           foodItemId: item.foodItemId,
-          amount: item.amount,
+          amount: scaledAmount,
           calories: food.calories * multiplier,
           protein: food.protein * multiplier,
           fat: food.fat * multiplier,
@@ -860,12 +927,16 @@ export default function AxisApp() {
           <WorkoutTab
             sessions={workoutSessions}
             legacyEntries={workouts}
+            routines={workoutRoutines}
             onStartSession={handleStartWorkoutSession}
+            onStartFromRoutine={handleStartFromRoutine}
             onUpdateSession={handleUpdateWorkoutSession}
             onFinishSession={handleFinishWorkoutSession}
             onCancelSession={handleCancelWorkoutSession}
             onDeleteSession={handleDeleteWorkoutSession}
             onDeleteLegacy={handleDeleteWorkout}
+            onSaveRoutine={handleSaveRoutine}
+            onDeleteRoutine={handleDeleteRoutine}
           />
         )}
 
@@ -875,6 +946,7 @@ export default function AxisApp() {
             goal={foodGoal}
             customFoods={customFoods}
             recipes={recipes}
+            favoriteFoodIds={favoriteFoods}
             onAddFood={handleAddFood}
             onDeleteFood={handleDeleteFood}
             onSaveGoal={handleSaveFoodGoal}
@@ -882,6 +954,7 @@ export default function AxisApp() {
             onApplyRecipe={handleApplyRecipe}
             onSaveRecipe={handleSaveRecipe}
             onDeleteRecipe={handleDeleteRecipe}
+            onToggleFavoriteFood={handleToggleFavoriteFood}
             prefilledFood={prefilledFood}
             onClearPrefill={handleClearPrefill}
           />
