@@ -21,6 +21,7 @@ import { FoodTab } from '@/components/axis/tabs/food-tab'
 import { SleepTab } from '@/components/axis/tabs/sleep-tab'
 import { BodyTab } from '@/components/axis/tabs/body-tab'
 import { MetricDetailTab } from '@/components/axis/tabs/metric-detail-tab'
+import { ActivityTab } from '@/components/axis/tabs/activity-tab'
 import { TabSettingsDialog } from '@/components/axis/tab-settings-dialog'
 import { DataManagementDialog } from '@/components/axis/data-management-dialog'
 import { useLocalStorage } from '@/hooks/use-local-storage'
@@ -32,6 +33,7 @@ import type {
   WorkoutRoutine,
   SessionExercise,
   WorkoutSet,
+  ActivityEntry,
   FoodEntry,
   FoodGoal,
   CustomFoodItem,
@@ -98,7 +100,8 @@ export default function AxisApp() {
   const [workouts, setWorkouts] = useLocalStorage<WorkoutEntry[]>('axis-workouts', [])
   const [workoutSessions, setWorkoutSessions] = useLocalStorage<WorkoutSession[]>('axis-workout-sessions', [])
   const [workoutRoutines, setWorkoutRoutines] = useLocalStorage<WorkoutRoutine[]>('axis-workout-routines', [])
-  const [favoriteFoods, setFavoriteFoods] = useLocalStorage<string[]>('axis-favorite-foods', []) // FoodItem.id の配列
+  const [favoriteFoods, setFavoriteFoods] = useLocalStorage<string[]>('axis-favorite-foods', [])
+  const [activities, setActivities] = useLocalStorage<ActivityEntry[]>('axis-activities', [])
   const [foods, setFoods] = useLocalStorage<FoodEntry[]>('axis-foods', [])
   const [foodGoal, setFoodGoal] = useLocalStorage<FoodGoal>('axis-food-goal', {
     calories: 2200,
@@ -472,6 +475,25 @@ export default function AxisApp() {
     setWorkoutRoutines(prev => prev.filter(r => r.id !== id))
     showToast('ルーティンを削除しました', 'bg-destructive')
   }, [setWorkoutRoutines, showToast])
+
+  // Activity handlers (有酸素運動・ストレッチ)
+  const handleAddActivity = useCallback((data: Omit<ActivityEntry, 'id' | 'createdAt'>) => {
+    const newEntry: ActivityEntry = {
+      ...data,
+      id: crypto.randomUUID(),
+      createdAt: Date.now(),
+    }
+    setActivities(prev => [...prev, newEntry])
+    showToast(
+      data.type === 'cardio' ? '有酸素運動を記録しました' : 'ストレッチを記録しました',
+      data.type === 'cardio' ? 'bg-workout' : 'bg-sleep'
+    )
+  }, [setActivities, showToast])
+
+  const handleDeleteActivity = useCallback((id: string) => {
+    setActivities(prev => prev.filter(a => a.id !== id))
+    showToast('記録を削除しました', 'bg-destructive')
+  }, [setActivities, showToast])
 
   // お気に入り食品トグル
   const handleToggleFavoriteFood = useCallback((foodId: string) => {
@@ -980,6 +1002,24 @@ export default function AxisApp() {
             onAddBody={handleAddBody}
             onDeleteBody={handleDeleteBody}
             onSyncFromHealth={handleSyncBodyFromHealth}
+          />
+        )}
+
+        {activeTab === 'cardio' && (
+          <ActivityTab
+            type="cardio"
+            entries={activities.filter(a => a.type === 'cardio')}
+            onAdd={handleAddActivity}
+            onDelete={handleDeleteActivity}
+          />
+        )}
+
+        {activeTab === 'stretch' && (
+          <ActivityTab
+            type="stretch"
+            entries={activities.filter(a => a.type === 'stretch')}
+            onAdd={handleAddActivity}
+            onDelete={handleDeleteActivity}
           />
         )}
 

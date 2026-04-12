@@ -228,14 +228,33 @@ export interface MetricEntry {
   createdAt: number
 }
 
+// アクティビティ記録 (有酸素運動・ストレッチ共通)
+export type ActivityType = 'cardio' | 'stretch'
+export type ActivityIntensity = 'low' | 'medium' | 'high'
+
+export interface ActivityEntry {
+  id: string
+  type: ActivityType
+  activityName: string // "ランニング", "ヨガ" etc.
+  duration: number // 分
+  distance?: number // km (cardio)
+  calories?: number // kcal
+  heartRate?: number // 平均bpm (cardio)
+  bodyParts?: string[] // 部位 (stretch)
+  intensity?: ActivityIntensity
+  notes?: string
+  date: string
+  createdAt: number
+}
+
 // 「組み込み」カテゴリ: 固有のデータモデルと専用タブUIを持つ
-export type BuiltinTabId = 'money' | 'workout' | 'food' | 'sleep' | 'body'
+export type BuiltinTabId = 'money' | 'workout' | 'food' | 'sleep' | 'body' | 'cardio' | 'stretch'
 
 // タブの識別子。Home / 組み込み / 動的メトリクスの3種
 // メトリクスは "metric:{metricId}" の形式で表現する
 export type TabType = 'home' | BuiltinTabId | `metric:${string}`
 
-export const BUILTIN_TAB_IDS: BuiltinTabId[] = ['money', 'workout', 'food', 'sleep', 'body']
+export const BUILTIN_TAB_IDS: BuiltinTabId[] = ['money', 'workout', 'food', 'sleep', 'body', 'cardio', 'stretch']
 
 export interface TabConfig {
   // 組み込みなら id = BuiltinTabId、メトリクスなら id = "metric:{metricId}"
