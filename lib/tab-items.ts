@@ -1,7 +1,7 @@
 // BottomNav とオンボーディング/設定画面で共有するタブメタデータ。
 // 組み込みとメトリクスの両方を統一インターフェースで扱う。
 
-import { Wallet, Dumbbell, Utensils, Moon, Scale, HeartPulse, StretchHorizontal } from 'lucide-react'
+import { Wallet, Dumbbell, Utensils, Moon, Scale, HeartPulse, StretchHorizontal, Brain } from 'lucide-react'
 import * as Icons from 'lucide-react'
 import type { BuiltinTabId, MetricDefinition, TabType } from './types'
 
@@ -80,6 +80,14 @@ export const BUILTIN_META: Record<BuiltinTabId, BuiltinMeta> = {
     icon: StretchHorizontal,
     colorClass: 'text-sleep',
     indicatorClass: 'bg-sleep',
+  },
+  mental: {
+    id: 'mental',
+    label: 'メンタル',
+    description: '気分・エネルギー・集中力',
+    icon: Brain,
+    colorClass: 'text-food',
+    indicatorClass: 'bg-food',
   },
 }
 

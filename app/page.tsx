@@ -22,6 +22,7 @@ import { SleepTab } from '@/components/axis/tabs/sleep-tab'
 import { BodyTab } from '@/components/axis/tabs/body-tab'
 import { MetricDetailTab } from '@/components/axis/tabs/metric-detail-tab'
 import { ActivityTab } from '@/components/axis/tabs/activity-tab'
+import { MentalTab } from '@/components/axis/tabs/mental-tab'
 import { TabSettingsDialog } from '@/components/axis/tab-settings-dialog'
 import { DataManagementDialog } from '@/components/axis/data-management-dialog'
 import { useLocalStorage } from '@/hooks/use-local-storage'
@@ -34,6 +35,7 @@ import type {
   SessionExercise,
   WorkoutSet,
   ActivityEntry,
+  MentalEntry,
   FoodEntry,
   FoodGoal,
   CustomFoodItem,
@@ -102,6 +104,7 @@ export default function AxisApp() {
   const [workoutRoutines, setWorkoutRoutines] = useLocalStorage<WorkoutRoutine[]>('axis-workout-routines', [])
   const [favoriteFoods, setFavoriteFoods] = useLocalStorage<string[]>('axis-favorite-foods', [])
   const [activities, setActivities] = useLocalStorage<ActivityEntry[]>('axis-activities', [])
+  const [mentalEntries, setMentalEntries] = useLocalStorage<MentalEntry[]>('axis-mental', [])
   const [foods, setFoods] = useLocalStorage<FoodEntry[]>('axis-foods', [])
   const [foodGoal, setFoodGoal] = useLocalStorage<FoodGoal>('axis-food-goal', {
     calories: 2200,
@@ -475,6 +478,18 @@ export default function AxisApp() {
     setWorkoutRoutines(prev => prev.filter(r => r.id !== id))
     showToast('ルーティンを削除しました', 'bg-destructive')
   }, [setWorkoutRoutines, showToast])
+
+  // Mental handlers
+  const handleAddMental = useCallback((data: Omit<MentalEntry, 'id' | 'createdAt'>) => {
+    const newEntry: MentalEntry = { ...data, id: crypto.randomUUID(), createdAt: Date.now() }
+    setMentalEntries(prev => [...prev, newEntry])
+    showToast('メンタルを記録しました', 'bg-food')
+  }, [setMentalEntries, showToast])
+
+  const handleDeleteMental = useCallback((id: string) => {
+    setMentalEntries(prev => prev.filter(e => e.id !== id))
+    showToast('記録を削除しました', 'bg-destructive')
+  }, [setMentalEntries, showToast])
 
   // Activity handlers (有酸素運動・ストレッチ)
   const handleAddActivity = useCallback((data: Omit<ActivityEntry, 'id' | 'createdAt'>) => {
@@ -1002,6 +1017,14 @@ export default function AxisApp() {
             onAddBody={handleAddBody}
             onDeleteBody={handleDeleteBody}
             onSyncFromHealth={handleSyncBodyFromHealth}
+          />
+        )}
+
+        {activeTab === 'mental' && (
+          <MentalTab
+            entries={mentalEntries}
+            onAdd={handleAddMental}
+            onDelete={handleDeleteMental}
           />
         )}
 

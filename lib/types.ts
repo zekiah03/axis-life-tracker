@@ -247,14 +247,27 @@ export interface ActivityEntry {
   createdAt: number
 }
 
+// メンタル/ウェルネス記録 (気分・エネルギー・ストレス・集中力を一括記録)
+export interface MentalEntry {
+  id: string
+  date: string
+  mood: number // 1-10
+  energy: number // 1-10
+  stress: number // 1-10
+  focus: number // 1-10
+  factors?: string[] // 影響要因タグ
+  notes?: string // 一言日記
+  createdAt: number
+}
+
 // 「組み込み」カテゴリ: 固有のデータモデルと専用タブUIを持つ
-export type BuiltinTabId = 'money' | 'workout' | 'food' | 'sleep' | 'body' | 'cardio' | 'stretch'
+export type BuiltinTabId = 'money' | 'workout' | 'food' | 'sleep' | 'body' | 'cardio' | 'stretch' | 'mental'
 
 // タブの識別子。Home / 組み込み / 動的メトリクスの3種
 // メトリクスは "metric:{metricId}" の形式で表現する
 export type TabType = 'home' | BuiltinTabId | `metric:${string}`
 
-export const BUILTIN_TAB_IDS: BuiltinTabId[] = ['money', 'workout', 'food', 'sleep', 'body', 'cardio', 'stretch']
+export const BUILTIN_TAB_IDS: BuiltinTabId[] = ['money', 'workout', 'food', 'sleep', 'body', 'cardio', 'stretch', 'mental']
 
 export interface TabConfig {
   // 組み込みなら id = BuiltinTabId、メトリクスなら id = "metric:{metricId}"

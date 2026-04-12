@@ -39,6 +39,7 @@ export const EXPORT_KEYS = [
   // App state
   'axis-workout-routines',
   'axis-activities',
+  'axis-mental',
   'axis-favorite-foods',
   'axis-tab-config-v2',
   'axis-onboarded',
