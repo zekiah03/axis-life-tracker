@@ -16,10 +16,6 @@ interface OnboardingScreenProps {
   ) => void
 }
 
-type Selection =
-  | { kind: 'builtin'; id: BuiltinTabId }
-  | { kind: 'metric'; preset: MetricPreset }
-
 export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [selectedBuiltins, setSelectedBuiltins] = useState<Set<BuiltinTabId>>(
     new Set(['money', 'workout', 'food'])
@@ -47,7 +43,6 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const totalSelected = selectedBuiltins.size + selectedPresets.size
 
   const handleComplete = () => {
-    // 選択されたプリセットから新しいメトリクス定義を作る
     const newMetrics: Omit<MetricDefinition, 'id' | 'createdAt'>[] = []
     for (const preset of metricPresets) {
       if (selectedPresets.has(preset.name)) {
@@ -67,21 +62,19 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
       }
     }
 
-    // タブ設定を構築。Onboardingの選択順を保持するよう builtin → metric の順で並べる
     const tabConfig: TabConfig[] = []
     for (const id of BUILTIN_TAB_IDS) {
       if (selectedBuiltins.has(id)) {
         tabConfig.push({ id, visible: true })
       }
     }
-    // メトリクス分は onComplete 側で metricId が決まるので、そこでタブ設定に追加する
     onComplete(tabConfig, newMetrics)
   }
 
   return (
-    <div className="flex min-h-screen max-w-[480px] mx-auto flex-col bg-background">
+    <div className="flex min-h-[100dvh] max-w-[480px] mx-auto flex-col bg-background">
       {/* ヘッダー */}
-      <header className="px-6 pt-12 pb-6">
+      <div className="px-6 pt-12 pb-6 shrink-0">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="h-5 w-5 text-foreground" />
           <h1 className="text-2xl font-bold text-foreground">ようこそ</h1>
@@ -91,13 +84,14 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           <br />
           後から設定画面で追加・削除もできます。
         </p>
-      </header>
+      </div>
 
-      <main className="flex-1 overflow-y-auto px-4 pb-40 space-y-6">
+      {/* スクロール可能なコンテンツ */}
+      <div className="flex-1 overflow-y-auto px-4 space-y-6">
         {/* カテゴリ */}
         <section className="space-y-2">
           <h2 className="text-xs font-medium text-muted-foreground px-2">
-            カテゴリ(高機能)
+            カテゴリ（高機能）
           </h2>
           <div className="grid grid-cols-2 gap-2">
             {BUILTIN_TAB_IDS.map((id) => {
@@ -128,7 +122,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           </div>
         </section>
 
-        {/* 数値ログ(カテゴリごと) */}
+        {/* 数値ログ（カテゴリごと） */}
         {metricCategories.map((cat) => {
           const items = metricPresets.filter(p => p.category === cat)
           if (items.length === 0) return null
@@ -174,10 +168,13 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
             </section>
           )
         })}
-      </main>
 
-      {/* 下部の確定バー */}
-      <footer className="fixed bottom-0 left-0 right-0 z-50 max-w-[480px] mx-auto p-4 pb-6 bg-background/95 backdrop-blur-sm border-t border-border">
+        {/* 下に余白（フッター分） */}
+        <div className="h-4" />
+      </div>
+
+      {/* 下部の確定バー — sticky ではなく flex の shrink-0 */}
+      <div className="shrink-0 p-4 pb-8 bg-background border-t border-border">
         <div className="flex items-center justify-between mb-3 text-xs text-muted-foreground">
           <span>選択中: {totalSelected} 項目</span>
           <button
@@ -199,7 +196,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         >
           {totalSelected === 0 ? '項目を選択してください' : '始める'}
         </Button>
-      </footer>
+      </div>
     </div>
   )
 }
