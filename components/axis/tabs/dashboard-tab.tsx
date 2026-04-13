@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import * as Icons from 'lucide-react'
 import {
   Wallet,
@@ -155,10 +155,31 @@ export function DashboardTab(props: DashboardTabProps) {
     metrics, metricEntries,
   }), [transactions, workoutSessions, foods, foodGoal, sleeps, bodies, activities, mentalEntries, habitEntries, metrics, metricEntries])
 
-  // Analytics — 遅延計算 (データが十分にある場合のみ)
-  const trendLines: TrendLine[] = []
-  const autoInsights: Insight[] = []
-  const weekScore: WeeklyScore | null = null
+  // Analytics — 初回描画後に非同期計算 (フリーズ防止)
+  const [trendLines, setTrendLines] = useState<TrendLine[]>([])
+  const [autoInsights, setAutoInsights] = useState<Insight[]>([])
+  const [weekScore, setWeekScore] = useState<WeeklyScore | null>(null)
+
+  useEffect(() => {
+    if (!hasAnyData) return
+    // 描画完了後にrequestIdleCallbackで計算 (メインスレッドをブロックしない)
+    const compute = () => {
+      try {
+        setTrendLines(computeTrends(analyticsInput))
+        setAutoInsights(detectInsights(analyticsInput))
+        setWeekScore(computeWeeklyScore(analyticsInput))
+      } catch (e) {
+        console.error('[analytics] computation error', e)
+      }
+    }
+    if (typeof requestIdleCallback === 'function') {
+      const id = requestIdleCallback(compute)
+      return () => cancelIdleCallback(id)
+    } else {
+      const id = setTimeout(compute, 500)
+      return () => clearTimeout(id)
+    }
+  }, [analyticsInput, hasAnyData])
 
   // Pre-compute data for all widgets
   const data = useMemo(() => {
