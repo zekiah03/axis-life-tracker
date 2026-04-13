@@ -248,8 +248,12 @@ export default function AxisApp() {
     scrollRef.current?.scrollTo(0, 0)
   }, [activeTab])
 
-  // Daily reminder scheduler — reminderConfig 変更時のみ再セットアップ
-  // hasRecordToday は呼ばれた時点で localStorage を直接読むので依存不要
+  // Daily reminder scheduler — reminderConfig or locale 変更時のみ
+  const reminderTitleRef = useRef(t.notifications.reminderTitle)
+  const reminderBodyRef = useRef(t.notifications.reminderBody)
+  reminderTitleRef.current = t.notifications.reminderTitle
+  reminderBodyRef.current = t.notifications.reminderBody
+
   useEffect(() => {
     const hasRecordToday = () => {
       if (typeof window === 'undefined') return true
@@ -270,11 +274,12 @@ export default function AxisApp() {
       )
     }
     startDailyReminderCheck(reminderConfig, hasRecordToday, {
-      title: t.notifications.reminderTitle,
-      body: t.notifications.reminderBody,
+      title: reminderTitleRef.current,
+      body: reminderBodyRef.current,
     })
     return () => stopDailyReminderCheck()
-  }, [reminderConfig, t])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reminderConfig])
 
   const showToast = useCallback((message: string, color: string) => {
     setToast({ message, visible: true, color })
