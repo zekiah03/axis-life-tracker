@@ -915,7 +915,7 @@ export function AppMain() {
 
   return (
     <I18nContext.Provider value={i18nValue}>
-      <div className="flex min-h-screen max-w-[480px] mx-auto flex-col bg-background">
+      <div className="flex min-h-screen max-w-[480px] mx-auto flex-col bg-background overflow-x-hidden">
       <TopBar
         onSearchClick={() => setIsSearchOpen(true)}
         onAddClick={handleAddClick}
@@ -925,7 +925,7 @@ export function AppMain() {
 
       <main
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 pb-20 pt-16"
+        className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-20 pt-16"
       >
         {activeTab === 'home' && (
           <DashboardTab
