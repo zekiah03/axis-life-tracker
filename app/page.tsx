@@ -2,16 +2,20 @@
 
 import { useState, useMemo } from 'react'
 import { useLocalStorage } from '@/hooks/use-local-storage'
+import { IntroSlides } from '@/components/axis/intro-slides'
 import { OnboardingScreen } from '@/components/axis/onboarding-screen'
 import { AppMain } from '@/components/axis/app-main'
 import { I18nContext, translations, type Locale } from '@/lib/i18n'
 import type { TabConfig, MetricDefinition } from '@/lib/types'
 import { BUILTIN_TAB_IDS, type BuiltinTabId } from '@/lib/types'
 
-// Thin gate component: shows onboarding if not onboarded, otherwise mounts AppMain.
-// This ensures AppMain's 20+ hooks are never executed during onboarding.
+// 3段階のゲート:
+// 1. IntroSlides (初回のみ: アプリの価値を伝える紹介)
+// 2. OnboardingScreen (記録する項目を選ぶ)
+// 3. AppMain (メインアプリ)
 export default function Page() {
   const [onboarded, setOnboarded] = useLocalStorage<boolean>('axis-onboarded', false)
+  const [introSeen, setIntroSeen] = useLocalStorage<boolean>('axis-intro-seen', false)
   const [locale, setLocale] = useLocalStorage<Locale>('axis-locale', 'ja')
   const t = translations[locale]
 
@@ -35,15 +39,21 @@ export default function Page() {
       id: `metric:${m.id}` as const,
       visible: true,
     }))
-    // Write directly to localStorage — AppMain will read on mount
     const existingMetrics = JSON.parse(window.localStorage.getItem('axis-metrics') || '[]')
     window.localStorage.setItem('axis-metrics', JSON.stringify([...existingMetrics, ...createdMetrics]))
     window.localStorage.setItem('axis-tab-config-v2', JSON.stringify([...builtinConfig, ...metricTabs]))
     window.localStorage.setItem('axis-onboarded', 'true')
-    // Trigger re-render so AppMain mounts
     setOnboarded(true)
   }
 
+  // ステージ1: 紹介スライド (初回のみ)
+  if (!introSeen && !onboarded) {
+    return (
+      <IntroSlides onComplete={() => setIntroSeen(true)} />
+    )
+  }
+
+  // ステージ2: オンボーディング (項目選択)
   if (!onboarded) {
     return (
       <I18nContext.Provider value={i18nValue}>
@@ -52,5 +62,6 @@ export default function Page() {
     )
   }
 
+  // ステージ3: メインアプリ
   return <AppMain />
 }
