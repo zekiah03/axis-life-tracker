@@ -103,16 +103,17 @@ export function MetricDetailTab({
     // ストリーク
     let streak = 0
     const checkDate = new Date()
-    while (true) {
+    let skippedFirst = false
+    for (let i = 0; i < 60; i++) {
       const dateStr = checkDate.toISOString().split('T')[0]
       if (byDate.has(dateStr) || entries.some(e => e.date === dateStr)) {
         streak++
-        checkDate.setDate(checkDate.getDate() - 1)
+      } else if (streak === 0 && !skippedFirst) {
+        skippedFirst = true
       } else {
-        if (streak === 0) { checkDate.setDate(checkDate.getDate() - 1); continue }
         break
       }
-      if (streak > 365) break
+      checkDate.setDate(checkDate.getDate() - 1)
     }
 
     return { avg, bars, streak, days: byDate.size }

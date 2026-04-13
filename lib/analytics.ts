@@ -257,10 +257,11 @@ export function detectInsights(input: AnalyticsInput): Insight[] {
   const sevenAgo = getDaysAgo(7)
   const fourteenAgo = getDaysAgo(14)
 
-  // 1. 記録継続日数
+  // 1. 記録継続日数 (最大60日遡り)
   let streak = 0
   const d = new Date()
-  while (true) {
+  let skipped = false
+  for (let i = 0; i < 60; i++) {
     const ds = dateStr(d)
     const hasAny =
       input.transactions.some(t => t.date === ds) ||
@@ -272,9 +273,14 @@ export function detectInsights(input: AnalyticsInput): Insight[] {
       input.habitEntries.some(e => e.date === ds) ||
       input.metricEntries.some(e => e.date === ds) ||
       input.activities.some(a => a.date === ds)
-    if (hasAny) { streak++; d.setDate(d.getDate() - 1) }
-    else { if (streak === 0) { d.setDate(d.getDate() - 1); continue } break }
-    if (streak > 365) break
+    if (hasAny) {
+      streak++
+    } else if (streak === 0 && !skipped) {
+      skipped = true // 今日データなしなら1日だけスキップ
+    } else {
+      break
+    }
+    d.setDate(d.getDate() - 1)
   }
   if (streak >= 7) {
     insights.push({
