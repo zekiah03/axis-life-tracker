@@ -1,14 +1,12 @@
 'use client'
 
-import { useState, useMemo, lazy, Suspense } from 'react'
+import { useState, useMemo } from 'react'
 import { useLocalStorage } from '@/hooks/use-local-storage'
 import { OnboardingScreen } from '@/components/axis/onboarding-screen'
+import { AppMain } from '@/components/axis/app-main'
 import { I18nContext, translations, type Locale } from '@/lib/i18n'
 import type { TabConfig, MetricDefinition } from '@/lib/types'
 import { BUILTIN_TAB_IDS, type BuiltinTabId } from '@/lib/types'
-
-// AppMain を lazy import — onboarded=true になるまでバンドルすら読み込まない
-const AppMain = lazy(() => import('@/components/axis/app-main').then(m => ({ default: m.AppMain })))
 
 // Thin gate component: shows onboarding if not onboarded, otherwise mounts AppMain.
 // This ensures AppMain's 20+ hooks are never executed during onboarding.
@@ -54,13 +52,5 @@ export default function Page() {
     )
   }
 
-  return (
-    <Suspense fallback={
-      <div className="flex h-[100dvh] items-center justify-center bg-background">
-        <p className="text-sm text-muted-foreground animate-pulse">読み込み中...</p>
-      </div>
-    }>
-      <AppMain />
-    </Suspense>
-  )
+  return <AppMain />
 }

@@ -3,18 +3,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 
 export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
-  // 初回は localStorage を同期的に読んで初期値にする (SSR 時は initialValue)
-  const [storedValue, setStoredValue] = useState<T>(() => {
-    if (typeof window === 'undefined') return initialValue
+  // SSR では常に initialValue を使い、クライアントマウント後に localStorage から読む
+  const [storedValue, setStoredValue] = useState<T>(initialValue)
+  const initialized = useRef(false)
+
+  // クライアントマウント後に localStorage から初期値を読み込む (1回だけ)
+  useEffect(() => {
+    if (initialized.current) return
+    initialized.current = true
     try {
       const item = window.localStorage.getItem(key)
-      return item ? (JSON.parse(item) as T) : initialValue
+      if (item !== null) {
+        setStoredValue(JSON.parse(item) as T)
+      }
     } catch {
-      return initialValue
+      // noop
     }
-  })
+  }, [key])
 
-  // 最新値を ref で保持 (関数型更新で stale closure を回避)
   const valueRef = useRef(storedValue)
   valueRef.current = storedValue
 

@@ -87,7 +87,7 @@ export function AppMain() {
   )
 
   // Widget config auto-fill
-  useEffect(() => { return; // TEMP DISABLED
+  useEffect(() => {
     if (typeof window === 'undefined') return
     setWidgetConfig(prev => {
       const known = new Set(prev.map(w => w.id))
@@ -134,7 +134,7 @@ export function AppMain() {
   // onboarded はゲート(page.tsx)で管理。AppMainは常にonboarded=trueで呼ばれる。
 
   // === Migrations (初回マウントのみ) ===
-  useEffect(() => { return; // TEMP DISABLED
+  useEffect(() => {
     if (typeof window === 'undefined') return
     // 家計簿カテゴリの初期投入
     setMoneyCategories(prev => {
@@ -186,7 +186,7 @@ export function AppMain() {
   }, [])
 
   // v1→v2 migration. 初回マウント時のみ。新規ユーザーは何もしない。
-  useEffect(() => { return; // TEMP DISABLED
+  useEffect(() => {
     if (typeof window === 'undefined') return
     const storedOnboarded = window.localStorage.getItem('axis-onboarded')
     if (storedOnboarded === 'true') return
@@ -234,7 +234,7 @@ export function AppMain() {
 
   // 非表示タブ / 存在しないメトリクスタブをアクティブにした状態なら home に戻す
   // tabConfig or activeTab が変わった時のみ
-  useEffect(() => { return; // TEMP DISABLED
+  useEffect(() => {
     if (activeTab === 'home') return
     const conf = tabConfig.find(c => c.id === activeTab)
     if (conf && !conf.visible) {
@@ -243,7 +243,7 @@ export function AppMain() {
   }, [tabConfig, activeTab])
 
   // Reset scroll on tab change
-  useEffect(() => { return; // TEMP DISABLED
+  useEffect(() => {
     scrollRef.current?.scrollTo(0, 0)
   }, [activeTab])
 
@@ -253,7 +253,7 @@ export function AppMain() {
   reminderTitleRef.current = t.notifications.reminderTitle
   reminderBodyRef.current = t.notifications.reminderBody
 
-  useEffect(() => { return; // TEMP DISABLED
+  useEffect(() => {
     if (typeof window === 'undefined') return
     const hasRecordToday = () => {
       const today = new Date().toISOString().split('T')[0]
@@ -675,7 +675,7 @@ export function AppMain() {
   // (sleep migration は上の統合migrationに移動済み)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   // 以下は空のplaceholder
-  useEffect(() => { return; // TEMP DISABLED
+  useEffect(() => {
     // noop — migration consolidated above
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
