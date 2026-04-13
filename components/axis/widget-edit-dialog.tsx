@@ -43,7 +43,7 @@ export function WidgetEditDialog({
     onChange(next)
   }
 
-  const reset = () => onChange(DEFAULT_WIDGET_CONFIG)
+  const reset = () => onChange([...DEFAULT_WIDGET_CONFIG])
 
   const visibleCount = config.filter(c => c.visible).length
 
