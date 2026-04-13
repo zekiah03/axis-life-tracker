@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface IntroSlidesProps {
   onComplete: () => void
@@ -99,6 +100,7 @@ const slides: Slide[] = [
 ]
 
 export function IntroSlides({ onComplete }: IntroSlidesProps) {
+  const { t } = useI18n()
   const [currentSlide, setCurrentSlide] = useState(0)
   const slide = slides[currentSlide]
   const isLast = currentSlide === slides.length - 1
@@ -190,7 +192,7 @@ export function IntroSlides({ onComplete }: IntroSlidesProps) {
             color: '#0a0a0f',
           }}
         >
-          {isLast ? 'TeleLog を始める' : '次へ'}
+          {isLast ? t.intro.startApp : t.intro.next}
           <ArrowRight className="h-4 w-4" />
         </Button>
       </div>

@@ -14,6 +14,7 @@ import {
   type NativeHealthAvailability,
 } from '@/lib/native-health'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface BodyTabProps {
   bodies: BodyEntry[]
@@ -25,6 +26,7 @@ interface BodyTabProps {
 }
 
 export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyGoal, onSyncFromHealth }: BodyTabProps) {
+  const { t } = useI18n()
   const [weight, setWeight] = useState('')
   const [bodyFat, setBodyFat] = useState('')
   const [muscleMass, setMuscleMass] = useState('')
@@ -47,14 +49,14 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
     try {
       const ok = await requestAccess(['weight', 'bodyFat'])
       if (!ok) {
-        setSyncMessage('権限が許可されませんでした')
+        setSyncMessage(t.common.permissionDenied)
         setSyncing(false)
         return
       }
       const count = await onSyncFromHealth()
-      setSyncMessage(count === 0 ? '直近のデータはありません' : `${count}件を同期しました`)
+      setSyncMessage(count === 0 ? t.common.noRecentData : t.common.syncedCount(count))
     } catch (err) {
-      setSyncMessage(err instanceof Error ? `同期失敗: ${err.message}` : '同期失敗')
+      setSyncMessage(err instanceof Error ? t.common.syncFailedWith(err.message) : t.common.syncFailed)
     } finally {
       setSyncing(false)
     }
@@ -103,7 +105,7 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
       {trend && (
         <Card className="bg-body/10 border-body/20">
           <CardContent className="p-4">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">最新の記録</h3>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">{t.body.latestRecord}</h3>
             <div className="flex items-baseline justify-between">
               <p className="text-3xl font-bold text-body">
                 {trend.latest.weight.toFixed(1)}
@@ -136,13 +138,13 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
             <div className="mt-3 grid grid-cols-2 gap-2">
               {trend.latest.bodyFat !== undefined && (
                 <div className="rounded-md bg-secondary/60 p-2">
-                  <p className="text-[10px] text-muted-foreground">体脂肪率</p>
+                  <p className="text-[10px] text-muted-foreground">{t.body.bodyFatLabel}</p>
                   <p className="text-sm font-bold text-foreground">{trend.latest.bodyFat.toFixed(1)}%</p>
                 </div>
               )}
               {bodyGoal.height && (
                 <div className="rounded-md bg-secondary/60 p-2">
-                  <p className="text-[10px] text-muted-foreground">BMI</p>
+                  <p className="text-[10px] text-muted-foreground">{t.body.bmi}</p>
                   <p className={cn('text-sm font-bold', (() => {
                     const bmi = trend.latest.weight / ((bodyGoal.height / 100) ** 2)
                     return bmi < 18.5 ? 'text-sleep' : bmi < 25 ? 'text-money' : 'text-destructive'
@@ -153,7 +155,7 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
               )}
               {trend.latest.bodyFat !== undefined && (
                 <div className="rounded-md bg-secondary/60 p-2">
-                  <p className="text-[10px] text-muted-foreground">除脂肪体重</p>
+                  <p className="text-[10px] text-muted-foreground">{t.body.leanBodyMass}</p>
                   <p className="text-sm font-bold text-foreground">
                     {(trend.latest.weight * (1 - trend.latest.bodyFat / 100)).toFixed(1)} kg
                   </p>
@@ -161,14 +163,14 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
               )}
               {bodyGoal.targetWeight && (
                 <div className="rounded-md bg-secondary/60 p-2">
-                  <p className="text-[10px] text-muted-foreground">目標まで</p>
+                  <p className="text-[10px] text-muted-foreground">{t.body.goalRemaining}</p>
                   <p className={cn('text-sm font-bold',
                     Math.abs(trend.latest.weight - bodyGoal.targetWeight) < 1 ? 'text-money' : 'text-foreground'
                   )}>
                     {trend.latest.weight > bodyGoal.targetWeight ? '-' : '+'}
                     {Math.abs(trend.latest.weight - bodyGoal.targetWeight).toFixed(1)} kg
                   </p>
-                  <p className="text-[9px] text-muted-foreground">目標 {bodyGoal.targetWeight}kg</p>
+                  <p className="text-[9px] text-muted-foreground">{t.body.targetWeight} {bodyGoal.targetWeight}kg</p>
                 </div>
               )}
             </div>
@@ -180,7 +182,7 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
                   type="button"
                   className="text-body underline"
                   onClick={() => {
-                    const input = prompt('身長を入力 (cm)', '')
+                    const input = prompt(t.body.heightPrompt, '')
                     if (input) {
                       const h = parseFloat(input)
                       if (h > 0) onSaveBodyGoal({ ...bodyGoal, height: h })
@@ -195,7 +197,7 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
                   type="button"
                   className="text-body underline"
                   onClick={() => {
-                    const input = prompt('目標体重 (kg)', '')
+                    const input = prompt(t.body.targetWeightPrompt, '')
                     if (input) {
                       const w = parseFloat(input)
                       if (w > 0) onSaveBodyGoal({ ...bodyGoal, targetWeight: w })
@@ -221,10 +223,10 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
               />
               <h3 className="text-sm font-medium text-muted-foreground">
                 {availability.platform === 'ios'
-                  ? 'ヘルスケアから同期'
+                  ? t.body.syncFromHealthIOS
                   : availability.platform === 'android'
-                  ? 'Health Connectから同期'
-                  : 'スマート体組成計から取得'}
+                  ? t.body.syncFromHealthAndroid
+                  : t.body.syncFromHealth}
               </h3>
             </div>
             {availability.available && onSyncFromHealth ? (
@@ -237,7 +239,7 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
                   onClick={handleSync}
                 >
                   <RefreshCw className={cn('h-4 w-4', syncing && 'animate-spin')} />
-                  {syncing ? '同期中...' : '体重・体脂肪を取得'}
+                  {syncing ? t.sleep.syncing : t.body.syncButton}
                 </Button>
                 {syncMessage && (
                   <p className="mt-2 text-xs text-muted-foreground">{syncMessage}</p>
@@ -246,8 +248,8 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
             ) : (
               <p className="text-xs text-muted-foreground">
                 {availability.platform === 'web'
-                  ? 'この機能はネイティブアプリでのみ利用できます。Withings/Tanita 等のスマート体組成計が書き込んだデータを取り込めます。'
-                  : availability.reason || '利用できません'}
+                  ? t.body.nativeWebDesc
+                  : availability.reason || t.common.notAvailable}
               </p>
             )}
           </CardContent>
@@ -257,10 +259,10 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
       {/* Form */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <h3 className="mb-3 text-sm font-medium text-muted-foreground">手動で記録</h3>
+          <h3 className="mb-3 text-sm font-medium text-muted-foreground">{t.common.manualRecord}</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-muted-foreground">体重 (kg)</Label>
+              <Label className="text-muted-foreground">{t.body.weight}</Label>
               <Input
                 type="number"
                 inputMode="decimal"
@@ -274,7 +276,7 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="text-muted-foreground">体脂肪率 (%)</Label>
+                <Label className="text-muted-foreground">{t.body.bodyFat}</Label>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -286,7 +288,7 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-muted-foreground">筋肉量 (kg)</Label>
+                <Label className="text-muted-foreground">{t.body.muscleMass}</Label>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -300,7 +302,7 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
             </div>
 
             <div className="space-y-2">
-              <Label className="text-muted-foreground">日付</Label>
+              <Label className="text-muted-foreground">{t.common.date}</Label>
               <Input
                 type="date"
                 value={date}
@@ -310,9 +312,9 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
             </div>
 
             <div className="space-y-2">
-              <Label className="text-muted-foreground">メモ (任意)</Label>
+              <Label className="text-muted-foreground">{t.common.memo} ({t.common.optional})</Label>
               <Textarea
-                placeholder="計測タイミング、体調など"
+                placeholder={t.body.measureMemo}
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
                 className="bg-secondary border-border text-foreground resize-none"
@@ -334,9 +336,9 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
       {/* 履歴 */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <h3 className="mb-3 text-sm font-medium text-muted-foreground">記録履歴</h3>
+          <h3 className="mb-3 text-sm font-medium text-muted-foreground">{t.body.recordHistory}</h3>
           {sortedBodies.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">記録がありません</p>
+            <p className="py-4 text-center text-sm text-muted-foreground">{t.common.noRecords}</p>
           ) : (
             <div className="space-y-2">
               {sortedBodies.map((b) => (
@@ -362,8 +364,8 @@ export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyG
                   </div>
                   {(b.bodyFat !== undefined || b.muscleMass !== undefined || b.memo) && (
                     <div className="mt-2 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
-                      {b.bodyFat !== undefined && <span>体脂肪 {b.bodyFat.toFixed(1)}%</span>}
-                      {b.muscleMass !== undefined && <span>筋肉 {b.muscleMass.toFixed(1)}kg</span>}
+                      {b.bodyFat !== undefined && <span>{t.body.bodyFatLabel} {b.bodyFat.toFixed(1)}%</span>}
+                      {b.muscleMass !== undefined && <span>{t.body.muscleLabel} {b.muscleMass.toFixed(1)}kg</span>}
                       {b.memo && <span className="w-full mt-1">{b.memo}</span>}
                     </div>
                   )}

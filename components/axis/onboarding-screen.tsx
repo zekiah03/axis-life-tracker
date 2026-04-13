@@ -9,6 +9,7 @@ import { metricPresets, type MetricPreset } from '@/lib/metric-presets'
 import { BUILTIN_META, getIconComponent } from '@/lib/tab-items'
 import { TAB_CATEGORIES, METRIC_CATEGORIES } from '@/lib/tab-categories'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface OnboardingScreenProps {
   onComplete: (
@@ -18,6 +19,7 @@ interface OnboardingScreenProps {
 }
 
 export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
+  const { t } = useI18n()
   const [selectedBuiltins, setSelectedBuiltins] = useState<Set<BuiltinTabId>>(
     new Set(['money', 'workout', 'food'])
   )
@@ -78,12 +80,12 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
       <div className="px-6 pt-12 pb-6 shrink-0">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="h-5 w-5 text-foreground" />
-          <h1 className="text-2xl font-bold text-foreground">ようこそ</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t.onboarding.welcome}</h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          記録したい項目を選んでください。
+          {t.onboarding.selectItems}
           <br />
-          後から設定画面で追加・削除もできます。
+          {t.onboarding.canChangeLater}
         </p>
       </div>
 
@@ -161,7 +163,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
                           {preset.unit}
-                          {preset.target ? ` / 目標${preset.target}` : ''}
+                          {preset.target ? ` / ${t.tabs.targetPrefix}${preset.target}` : ''}
                         </p>
                       </div>
                       {selected && (
@@ -182,7 +184,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
       {/* 下部の確定バー — sticky ではなく flex の shrink-0 */}
       <div className="shrink-0 p-4 pb-8 bg-background border-t border-border">
         <div className="flex items-center justify-between mb-3 text-xs text-muted-foreground">
-          <span>選択中: {totalSelected} 項目</span>
+          <span>{t.onboarding.selectedCount(totalSelected)}</span>
           <button
             type="button"
             className="hover:text-foreground transition-colors"
@@ -200,7 +202,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 font-medium text-base"
           disabled={totalSelected === 0}
         >
-          {totalSelected === 0 ? '項目を選択してください' : '始める'}
+          {totalSelected === 0 ? t.onboarding.selectPrompt : t.onboarding.start}
         </Button>
       </div>
     </div>

@@ -18,6 +18,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 type MealTiming = '朝食' | '昼食' | '夕食' | '間食'
 
@@ -81,7 +82,7 @@ function ProgressRing({
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <p className="text-[10px] text-muted-foreground">残り</p>
+        <p className="text-[10px] text-muted-foreground">{t.food.remaining}</p>
         <p className="text-xl font-bold text-foreground">{Math.round(remaining)}</p>
         <p className="text-[10px] text-muted-foreground">kcal</p>
       </div>
@@ -108,6 +109,7 @@ export function FoodTab({
   onToggleFavoriteFood,
   onClearPrefill,
 }: FoodTabProps) {
+  const { t } = useI18n()
   const [date, setDate] = useState(getToday())
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMeal, setDialogMeal] = useState<MealTiming>('昼食')
@@ -224,7 +226,7 @@ export function FoodTab({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Flame className="h-3 w-3 text-food" />
-                  摂取 / 目標
+                  {t.food.intake}
                 </div>
                 <Button
                   type="button"
@@ -259,12 +261,12 @@ export function FoodTab({
       {/* PFC バー */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <h3 className="mb-3 text-sm font-medium text-muted-foreground">PFCバランス</h3>
+          <h3 className="mb-3 text-sm font-medium text-muted-foreground">{t.food.pfcBalance}</h3>
           <div className="space-y-3">
             {[
-              { label: 'P タンパク質', value: totals.protein, target: goal.protein, color: '#60a5fa', pct: pPct },
-              { label: 'F 脂質', value: totals.fat, target: goal.fat, color: '#facc15', pct: fPct },
-              { label: 'C 炭水化物', value: totals.carbs, target: goal.carbs, color: '#a78bfa', pct: cPct },
+              { label: t.food.pProtein, value: totals.protein, target: goal.protein, color: '#60a5fa', pct: pPct },
+              { label: t.food.fFat, value: totals.fat, target: goal.fat, color: '#facc15', pct: fPct },
+              { label: t.food.cCarbs, value: totals.carbs, target: goal.carbs, color: '#a78bfa', pct: cPct },
             ].map((row) => (
               <div key={row.label} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
@@ -407,9 +409,9 @@ export function FoodTab({
       <Dialog open={recipeManagerOpen} onOpenChange={setRecipeManagerOpen}>
         <DialogContent className="max-w-[440px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>レシピを管理</DialogTitle>
+            <DialogTitle>{t.food.manageRecipes}</DialogTitle>
             <DialogDescription>
-              よく食べる組み合わせをレシピとして保存しておくと、1タップでまとめて記録できます。
+              {t.food.recipeManagerDesc}
             </DialogDescription>
           </DialogHeader>
 
@@ -429,7 +431,7 @@ export function FoodTab({
           <div className="space-y-2">
             {recipes.length === 0 ? (
               <p className="text-center text-xs text-muted-foreground py-8">
-                まだレシピがありません
+                {t.food.noRecipes}
               </p>
             ) : (
               recipes.map((recipe) => (
@@ -464,7 +466,7 @@ export function FoodTab({
                     size="icon"
                     className="h-7 w-7 text-muted-foreground hover:text-destructive"
                     onClick={() => {
-                      if (confirm(`「${recipe.name}」を削除しますか?`)) {
+                      if (confirm(t.common.deleteConfirmName(recipe.name))) {
                         onDeleteRecipe(recipe.id)
                       }
                     }}

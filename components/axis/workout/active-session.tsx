@@ -34,6 +34,7 @@ import {
   type ExerciseRecords,
 } from '@/lib/workout-stats'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface ActiveSessionProps {
   session: WorkoutSession
@@ -60,6 +61,7 @@ export function ActiveSession({
   onFinish,
   onCancel,
 }: ActiveSessionProps) {
+  const { t } = useI18n()
   const [addExerciseOpen, setAddExerciseOpen] = useState(false)
   const [exerciseSearch, setExerciseSearch] = useState('')
   const [elapsed, setElapsed] = useState(Date.now() - session.startedAt)
@@ -180,7 +182,7 @@ export function ActiveSession({
 
   const handleFinish = () => {
     if (session.exercises.length === 0) {
-      if (!confirm('種目が1つも無い状態で終了します。よろしいですか?')) return
+      if (!confirm(t.workout.finishEmptyConfirm)) return
     }
     onFinish({ ...session, endedAt: Date.now() })
   }
@@ -193,7 +195,7 @@ export function ActiveSession({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Flame className="h-4 w-4 text-workout" />
-              <h2 className="text-sm font-bold text-workout">ワークアウト中</h2>
+              <h2 className="text-sm font-bold text-workout">{t.workout.active}</h2>
             </div>
             <div className="flex gap-2">
               <Button
@@ -202,7 +204,7 @@ export function ActiveSession({
                 size="sm"
                 className="h-8 text-xs text-muted-foreground hover:text-destructive"
                 onClick={() => {
-                  if (confirm('ワークアウトを破棄しますか?')) onCancel()
+                  if (confirm(t.workout.discardConfirm)) onCancel()
                 }}
               >
                 破棄
@@ -219,24 +221,24 @@ export function ActiveSession({
           </div>
           <Input
             type="text"
-            placeholder="セッション名 (例: Push Day)"
+            placeholder={t.workout.sessionName}
             value={session.name || ''}
             onChange={(e) => updateSession({ name: e.target.value })}
             className="bg-secondary/60 border-border text-foreground h-8 text-sm mb-2"
           />
           <div className="grid grid-cols-3 gap-1 text-center text-xs">
             <div>
-              <p className="text-muted-foreground">時間</p>
+              <p className="text-muted-foreground">{t.workout.time}</p>
               <p className="font-semibold text-foreground">{formatElapsed(elapsed)}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">ボリューム</p>
+              <p className="text-muted-foreground">{t.workout.volume}</p>
               <p className="font-semibold text-foreground">
                 {totalVolume.toLocaleString()} kg
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground">セット</p>
+              <p className="text-muted-foreground">{t.workout.sets}</p>
               <p className="font-semibold text-foreground">{totalSets}</p>
             </div>
           </div>
@@ -250,7 +252,7 @@ export function ActiveSession({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-workout" />
-                <span className="text-sm font-medium text-foreground">休憩</span>
+                <span className="text-sm font-medium text-foreground">{t.workout.rest}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span
@@ -295,7 +297,7 @@ export function ActiveSession({
             onRemoveSet={(setId) => removeSet(ex.id, setId)}
             onToggleComplete={(setId) => toggleSetComplete(ex.id, setId)}
             onRemoveExercise={() => {
-              if (confirm(`「${ex.exerciseName}」を削除しますか?`)) removeExercise(ex.id)
+              if (confirm(t.common.deleteConfirmName(ex.exerciseName))) removeExercise(ex.id)
             }}
           />
         )
@@ -316,13 +318,13 @@ export function ActiveSession({
       <Dialog open={addExerciseOpen} onOpenChange={setAddExerciseOpen}>
         <DialogContent className="max-w-[440px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>種目を選択</DialogTitle>
+            <DialogTitle>{t.workout.selectExercise}</DialogTitle>
           </DialogHeader>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="種目名を検索..."
+              placeholder={t.workout.searchExercise}
               value={exerciseSearch}
               onChange={(e) => setExerciseSearch(e.target.value)}
               className="bg-secondary border-border text-foreground pl-9"
@@ -362,7 +364,7 @@ export function ActiveSession({
             })}
             {searchResults.length === 0 && (
               <p className="text-center text-sm text-muted-foreground py-4">
-                該当する種目がありません
+                {t.workout.noExerciseMatch}
               </p>
             )}
           </div>
@@ -372,10 +374,10 @@ export function ActiveSession({
               type="button"
               variant="outline"
               className="w-full gap-2"
-              onClick={() => addExercise(exerciseSearch.trim(), 'その他')}
+              onClick={() => addExercise(exerciseSearch.trim(), t.workout.other)}
             >
               <Plus className="h-4 w-4" />
-              「{exerciseSearch.trim()}」を追加
+              {t.workout.addExercise}: {exerciseSearch.trim()}
             </Button>
           )}
         </DialogContent>

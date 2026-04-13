@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import type { Transaction, MoneyCategory } from '@/lib/types'
 import { getIconComponent } from '@/lib/tab-items'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface TransactionDialogProps {
   open: boolean
@@ -33,6 +34,7 @@ export function TransactionDialog({
   editing,
   onSubmit,
 }: TransactionDialogProps) {
+  const { t } = useI18n()
   const [type, setType] = useState<'収入' | '支出'>(defaultType)
   const [categoryId, setCategoryId] = useState<string>('')
   const [amount, setAmount] = useState('')
@@ -81,7 +83,7 @@ export function TransactionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[440px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editing ? '取引を編集' : '取引を記録'}</DialogTitle>
+          <DialogTitle>{editing ? t.money.editTransaction : t.money.addTransaction}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -119,7 +121,7 @@ export function TransactionDialog({
 
           {/* Amount - 最初に金額入力 (Zaim風) */}
           <div className="space-y-2">
-            <Label className="text-muted-foreground">金額</Label>
+            <Label className="text-muted-foreground">{t.money.amount}</Label>
             <div className="relative">
               <Input
                 type="number"
@@ -131,14 +133,14 @@ export function TransactionDialog({
                 autoFocus
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                円
+                {t.common.yen}
               </span>
             </div>
           </div>
 
           {/* Category Grid */}
           <div className="space-y-2">
-            <Label className="text-muted-foreground">カテゴリー</Label>
+            <Label className="text-muted-foreground">{t.money.category}</Label>
             <div className="grid grid-cols-4 gap-2">
               {availableCategories.map((cat) => {
                 const Icon = getIconComponent(cat.icon)
@@ -165,14 +167,14 @@ export function TransactionDialog({
             </div>
             {availableCategories.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-4">
-                カテゴリがありません。設定画面から追加してください。
+                {t.money.noCategoriesAvailable}
               </p>
             )}
           </div>
 
           {/* Date */}
           <div className="space-y-2">
-            <Label className="text-muted-foreground">日付</Label>
+            <Label className="text-muted-foreground">{t.common.date}</Label>
             <Input
               type="date"
               value={date}
@@ -183,10 +185,10 @@ export function TransactionDialog({
 
           {/* Memo */}
           <div className="space-y-2">
-            <Label className="text-muted-foreground">メモ (任意)</Label>
+            <Label className="text-muted-foreground">{t.money.memoOptional}</Label>
             <Input
               type="text"
-              placeholder="メモを入力..."
+              placeholder={t.money.memoPlaceholder}
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
               className="bg-secondary border-border text-foreground"
@@ -198,7 +200,7 @@ export function TransactionDialog({
             className="w-full bg-money hover:bg-money/90 text-background font-medium"
             disabled={!categoryId || !amount}
           >
-            {editing ? '更新する' : '記録する'}
+            {editing ? t.money.update : t.money.record}
           </Button>
         </form>
       </DialogContent>

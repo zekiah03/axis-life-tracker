@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { MoneyCategory, Budget } from '@/lib/types'
 import { getIconComponent } from '@/lib/tab-items'
+import { useI18n } from '@/lib/i18n'
 
 interface BudgetManageDialogProps {
   open: boolean
@@ -33,6 +34,7 @@ export function BudgetManageDialog({
   onSave,
   onDelete,
 }: BudgetManageDialogProps) {
+  const { t } = useI18n()
   // 今月の予算を CategoryId ごとに展開したマップ
   const currentBudgets = useMemo(() => {
     const map = new Map<string, number>()
@@ -94,16 +96,16 @@ export function BudgetManageDialog({
     >
       <DialogContent className="max-w-[440px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>月次予算を設定</DialogTitle>
+          <DialogTitle>{t.money.monthlyBudget}</DialogTitle>
           <DialogDescription>
-            {month.replace('-', '年') + '月'} のカテゴリごとの予算を入力してください。0円にすると予算が解除されます。
+            {t.money.budgetDesc(month)}
           </DialogDescription>
         </DialogHeader>
 
         <div className="rounded-lg bg-secondary/40 p-3 flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">合計予算</span>
+          <span className="text-sm text-muted-foreground">{t.money.totalBudget}</span>
           <span className="text-lg font-bold text-foreground">
-            {totalDraft.toLocaleString()} 円
+            {totalDraft.toLocaleString()} {t.common.yen}
           </span>
         </div>
 
@@ -129,7 +131,7 @@ export function BudgetManageDialog({
                     className="bg-secondary border-border text-foreground text-right pr-6 h-9"
                   />
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                    円
+                    {t.common.yen}
                   </span>
                 </div>
               </div>

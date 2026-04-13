@@ -16,6 +16,7 @@ import {
 import { scoreLabel } from '@/lib/sleep-score'
 import type { SleepGoal } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface SleepTabProps {
   sleeps: SleepEntry[]
@@ -36,10 +37,10 @@ function calcDuration(bedtime: string, wakeTime: string): number {
   return minutes
 }
 
-function formatDuration(minutes: number): string {
+function formatDuration(minutes: number, t: any): string {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
-  return `${h}時間${m.toString().padStart(2, '0')}分`
+  return t.sleep.formatDuration(h, m.toString().padStart(2, '0'))
 }
 
 // 睡眠ステージを積み上げバーで表示
@@ -61,10 +62,10 @@ function StageBar({ sleep }: { sleep: SleepEntry }) {
         <div style={{ width: `${awakePct}%`, backgroundColor: '#71717a' }} title="覚醒" />
       </div>
       <div className="flex justify-between text-[10px] text-muted-foreground">
-        <span>深 {Math.round(deepMinutes)}分</span>
-        <span>浅 {Math.round(lightMinutes)}分</span>
-        <span>REM {Math.round(remMinutes)}分</span>
-        <span>覚醒 {Math.round(awakeMinutes)}分</span>
+        <span>{t.sleep.deep} {Math.round(deepMinutes)}{t.common.minutes}</span>
+        <span>{t.sleep.light} {Math.round(lightMinutes)}{t.common.minutes}</span>
+        <span>{t.sleep.rem} {Math.round(remMinutes)}{t.common.minutes}</span>
+        <span>{t.sleep.awake} {Math.round(awakeMinutes)}{t.common.minutes}</span>
       </div>
     </div>
   )
@@ -78,6 +79,7 @@ export function SleepTab({
   onSaveSleepGoal,
   onSyncFromHealth,
 }: SleepTabProps) {
+  const { t } = useI18n()
   const [bedtime, setBedtime] = useState('23:00')
   const [wakeTime, setWakeTime] = useState('07:00')
   const [quality, setQuality] = useState<1 | 2 | 3 | 4 | 5>(3)
@@ -119,16 +121,16 @@ export function SleepTab({
     try {
       const ok = await requestAccess(['sleep'])
       if (!ok) {
-        setSyncMessage('権限が許可されませんでした')
+        setSyncMessage(t.common.permissionDenied)
         setSyncing(false)
         return
       }
       const count = await onSyncFromHealth()
       setSyncMessage(
-        count === 0 ? '直近7日間のデータはありません' : `${count}晩分を同期しました`
+        count === 0 ? t.common.noDataFor7Days : t.common.syncedNights(count)
       )
     } catch (err) {
-      setSyncMessage(err instanceof Error ? `同期失敗: ${err.message}` : '同期失敗')
+      setSyncMessage(err instanceof Error ? t.common.syncFailedWith(err.message) : t.common.syncFailed)
     } finally {
       setSyncing(false)
     }
@@ -183,18 +185,18 @@ export function SleepTab({
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Moon className="h-4 w-4 text-sleep" />
-              <h3 className="text-sm font-medium text-muted-foreground">直近7日の平均</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">{t.sleep.avg7Days}</h3>
             </div>
             <div className="flex items-baseline justify-between">
               <p className="text-2xl font-bold text-sleep">
-                {formatDuration(Math.round(last7Avg.avgMin))}
+                {formatDuration(Math.round(last7Avg.avgMin), t)}
               </p>
               <div className="text-right text-sm text-muted-foreground">
                 {last7Avg.avgScore !== null && (
-                  <p>スコア: {Math.round(last7Avg.avgScore)} / 100</p>
+                  <p>{t.sleep.score}: {Math.round(last7Avg.avgScore)} / 100</p>
                 )}
                 {last7Avg.avgManual !== null && (
-                  <p>質: {last7Avg.avgManual.toFixed(1)} / 5</p>
+                  <p>{t.sleep.qualityLabel}: {last7Avg.avgManual.toFixed(1)} / 5</p>
                 )}
                 <p>({last7Avg.count}日)</p>
               </div>
@@ -203,12 +205,12 @@ export function SleepTab({
             {/* 睡眠負債 + 規則性 */}
             <div className="grid grid-cols-2 gap-2 mt-3">
               <div className="rounded-md bg-secondary/60 p-2">
-                <p className="text-[10px] text-muted-foreground">睡眠負債 (7日)</p>
+                <p className="text-[10px] text-muted-foreground">{t.sleep.sleepDebt}</p>
                 <p className={cn(
                   'text-sm font-bold',
                   last7Avg.debtMin > 0 ? 'text-destructive' : 'text-money'
                 )}>
-                  {last7Avg.debtMin > 0 ? '+' : ''}{formatDuration(Math.abs(Math.round(last7Avg.debtMin)))}
+                  {last7Avg.debtMin > 0 ? '+' : ''}{formatDuration(Math.abs(Math.round(last7Avg.debtMin)), t)}
                 </p>
                 <p className="text-[9px] text-muted-foreground">
                   目標 {sleepGoal.targetHours}h
@@ -216,7 +218,7 @@ export function SleepTab({
                     type="button"
                     className="ml-1 text-sleep underline"
                     onClick={() => {
-                      const input = prompt('目標睡眠時間（時間）', String(sleepGoal.targetHours))
+                      const input = prompt(t.sleep.sleepGoalPrompt, String(sleepGoal.targetHours))
                       if (input) {
                         const h = parseFloat(input)
                         if (h > 0 && h <= 24) onSaveSleepGoal({ targetHours: h })
@@ -228,21 +230,21 @@ export function SleepTab({
                 </p>
               </div>
               <div className="rounded-md bg-secondary/60 p-2">
-                <p className="text-[10px] text-muted-foreground">就寝の規則性</p>
+                <p className="text-[10px] text-muted-foreground">{t.sleep.bedtimeRegularity}</p>
                 {last7Avg.bedtimeStdDev !== null ? (
                   <>
                     <p className={cn(
                       'text-sm font-bold',
                       last7Avg.bedtimeStdDev < 30 ? 'text-money' : last7Avg.bedtimeStdDev < 60 ? 'text-foreground' : 'text-destructive'
                     )}>
-                      {last7Avg.bedtimeStdDev < 30 ? '安定' : last7Avg.bedtimeStdDev < 60 ? 'やや不規則' : '不規則'}
+                      {last7Avg.bedtimeStdDev < 30 ? t.sleep.stable : last7Avg.bedtimeStdDev < 60 ? t.sleep.slightlyIrregular : t.sleep.irregular}
                     </p>
                     <p className="text-[9px] text-muted-foreground">
-                      ばらつき {Math.round(last7Avg.bedtimeStdDev)}分
+                      {t.sleep.varianceMinutes(Math.round(last7Avg.bedtimeStdDev))}
                     </p>
                   </>
                 ) : (
-                  <p className="text-xs text-muted-foreground">データ不足</p>
+                  <p className="text-xs text-muted-foreground">{t.sleep.insufficientData}</p>
                 )}
               </div>
             </div>
@@ -261,10 +263,10 @@ export function SleepTab({
               />
               <h3 className="text-sm font-medium text-muted-foreground">
                 {availability.platform === 'ios'
-                  ? 'ヘルスケアから同期'
+                  ? t.sleep.syncFromHealthIOS
                   : availability.platform === 'android'
-                  ? 'Health Connectから同期'
-                  : 'ウェアラブルから自動取得'}
+                  ? t.sleep.syncFromHealthAndroid
+                  : t.sleep.syncFromHealth}
               </h3>
             </div>
             {availability.available && onSyncFromHealth ? (
@@ -277,20 +279,19 @@ export function SleepTab({
                   onClick={handleSync}
                 >
                   <RefreshCw className={cn('h-4 w-4', syncing && 'animate-spin')} />
-                  {syncing ? '同期中...' : '直近7日分を取得'}
+                  {syncing ? t.sleep.syncing : t.sleep.syncButton}
                 </Button>
                 {syncMessage && (
                   <p className="mt-2 text-xs text-muted-foreground">{syncMessage}</p>
                 )}
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Apple Watch / Fitbit / Oura / Garmin などが計測した睡眠データを取り込み、
-                  Fitbit形式のスコア (0-100) で質を自動判定します。
+                  {t.sleep.syncDesc}
                 </p>
               </>
             ) : (
               <p className="text-xs text-muted-foreground">
                 {availability.platform === 'web'
-                  ? 'この機能はネイティブアプリでのみ利用できます。スマートウォッチが計測した睡眠ステージ (深い/浅い/レム/覚醒) を取り込み、Fitbit形式のスコアを自動算出します。'
+                  ? t.sleep.nativeWebDesc
                   : availability.reason || '利用できません'}
               </p>
             )}
@@ -301,11 +302,11 @@ export function SleepTab({
       {/* Form */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <h3 className="mb-3 text-sm font-medium text-muted-foreground">手動で記録</h3>
+          <h3 className="mb-3 text-sm font-medium text-muted-foreground">{t.common.manualRecord}</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="text-muted-foreground">就寝</Label>
+                <Label className="text-muted-foreground">{t.sleep.bedtime}</Label>
                 <Input
                   type="time"
                   value={bedtime}
@@ -314,7 +315,7 @@ export function SleepTab({
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-muted-foreground">起床</Label>
+                <Label className="text-muted-foreground">{t.sleep.wakeTime}</Label>
                 <Input
                   type="time"
                   value={wakeTime}
@@ -326,13 +327,13 @@ export function SleepTab({
 
             {duration > 0 && (
               <div className="rounded-lg bg-sleep/10 p-4 text-center animate-in fade-in-0 slide-in-from-top-2">
-                <p className="text-xs text-muted-foreground">睡眠時間</p>
-                <p className="text-2xl font-bold text-sleep">{formatDuration(duration)}</p>
+                <p className="text-xs text-muted-foreground">{t.sleep.sleepTime}</p>
+                <p className="text-2xl font-bold text-sleep">{formatDuration(duration, t)}</p>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label className="text-muted-foreground">睡眠の質</Label>
+              <Label className="text-muted-foreground">{t.sleep.quality}</Label>
               <div className="flex justify-between gap-2">
                 {[1, 2, 3, 4, 5].map((q) => (
                   <button
@@ -354,7 +355,7 @@ export function SleepTab({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-muted-foreground">日付 (起床日)</Label>
+              <Label className="text-muted-foreground">{t.sleep.dateWakeUp}</Label>
               <Input
                 type="date"
                 value={date}
@@ -364,9 +365,9 @@ export function SleepTab({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-muted-foreground">メモ (任意)</Label>
+              <Label className="text-muted-foreground">{t.common.memo} ({t.common.optional})</Label>
               <Textarea
-                placeholder="目覚めの調子、夢、気になったことなど"
+                placeholder={t.sleep.memoPlaceholder}
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
                 className="bg-secondary border-border text-foreground resize-none"
@@ -388,9 +389,9 @@ export function SleepTab({
       {/* 履歴 */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <h3 className="mb-3 text-sm font-medium text-muted-foreground">睡眠履歴</h3>
+          <h3 className="mb-3 text-sm font-medium text-muted-foreground">{t.sleep.sleepHistory}</h3>
           {sortedSleeps.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">記録がありません</p>
+            <p className="py-4 text-center text-sm text-muted-foreground">{t.sleep.noRecords}</p>
           ) : (
             <div className="space-y-3">
               {sortedSleeps.map((s) => {
@@ -402,7 +403,7 @@ export function SleepTab({
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">{s.date}</span>
                         <span className="font-medium text-sleep">
-                          {formatDuration(s.duration)}
+                          {formatDuration(s.duration, t)}
                         </span>
                         {isAuto && (
                           <span className="rounded-full bg-sleep/20 px-2 py-0.5 text-[10px] text-sleep">
@@ -428,7 +429,7 @@ export function SleepTab({
                           className="font-semibold"
                           style={{ color: scoreInfo.color }}
                         >
-                          スコア {s.autoScore} · {scoreInfo.label}
+                          {t.sleep.score} {s.autoScore} · {scoreInfo.label}
                         </span>
                       ) : (
                         <span className="flex items-center gap-0.5">

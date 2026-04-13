@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { FoodGoal } from '@/lib/types'
+import { useI18n } from '@/lib/i18n'
 
 interface GoalDialogProps {
   open: boolean
@@ -24,6 +25,7 @@ interface GoalDialogProps {
 const KCAL_PER_G = { protein: 4, fat: 9, carbs: 4 }
 
 export function GoalDialog({ open, onOpenChange, goal, onSave }: GoalDialogProps) {
+  const { t } = useI18n()
   const [calories, setCalories] = useState(String(goal.calories))
   const [protein, setProtein] = useState(String(goal.protein))
   const [fat, setFat] = useState(String(goal.fat))
@@ -86,9 +88,9 @@ export function GoalDialog({ open, onOpenChange, goal, onSave }: GoalDialogProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[420px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>栄養目標を設定</DialogTitle>
+          <DialogTitle>{t.food.nutritionGoal}</DialogTitle>
           <DialogDescription>
-            1日あたりの目標カロリーとPFCバランスを入力してください。
+            {t.food.nutritionGoalDesc}
           </DialogDescription>
         </DialogHeader>
 
@@ -124,7 +126,7 @@ export function GoalDialog({ open, onOpenChange, goal, onSave }: GoalDialogProps
           </div>
 
           <div className="space-y-2">
-            <Label className="text-muted-foreground">目標カロリー (kcal)</Label>
+            <Label className="text-muted-foreground">{t.food.targetCalories}</Label>
             <Input
               type="number"
               inputMode="numeric"
@@ -136,7 +138,7 @@ export function GoalDialog({ open, onOpenChange, goal, onSave }: GoalDialogProps
 
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
-              <Label className="text-muted-foreground text-xs">P タンパク質</Label>
+              <Label className="text-muted-foreground text-xs">{t.food.pProtein}</Label>
               <div className="relative">
                 <Input
                   type="number"
@@ -151,7 +153,7 @@ export function GoalDialog({ open, onOpenChange, goal, onSave }: GoalDialogProps
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-muted-foreground text-xs">F 脂質</Label>
+              <Label className="text-muted-foreground text-xs">{t.food.fFat}</Label>
               <div className="relative">
                 <Input
                   type="number"
@@ -166,7 +168,7 @@ export function GoalDialog({ open, onOpenChange, goal, onSave }: GoalDialogProps
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-muted-foreground text-xs">C 炭水化物</Label>
+              <Label className="text-muted-foreground text-xs">{t.food.cCarbs}</Label>
               <div className="relative">
                 <Input
                   type="number"
@@ -185,7 +187,7 @@ export function GoalDialog({ open, onOpenChange, goal, onSave }: GoalDialogProps
           {/* PFC プレビュー */}
           <div className="rounded-lg bg-secondary/40 p-3 space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">PFCから計算</span>
+              <span className="text-muted-foreground">{t.food.fromPFC}</span>
               <span className="text-foreground font-semibold">
                 {Math.round(pfcKcal)} kcal
               </span>

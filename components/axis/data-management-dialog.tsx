@@ -28,6 +28,7 @@ import {
   type DataSummary,
 } from '@/lib/data-export'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface DataManagementDialogProps {
   open: boolean
@@ -38,12 +39,12 @@ interface DataManagementDialogProps {
 type Stage = 'menu' | 'import-preview' | 'import-success' | 'import-error'
 
 const CSV_EXPORTS: { key: Parameters<typeof exportCSV>[0]; label: string }[] = [
-  { key: 'axis-transactions', label: '取引 (家計簿)' },
-  { key: 'axis-workout-sessions', label: 'ワークアウトセッション' },
-  { key: 'axis-foods', label: '食事記録' },
-  { key: 'axis-sleeps', label: '睡眠' },
-  { key: 'axis-bodies', label: '体組成' },
-  { key: 'axis-metric-entries', label: '数値ログ (エントリ)' },
+  { key: 'axis-transactions', label: '' },
+  { key: 'axis-workout-sessions', label: '' },
+  { key: 'axis-foods', label: '' },
+  { key: 'axis-sleeps', label: '' },
+  { key: 'axis-bodies', label: '' },
+  { key: 'axis-metric-entries', label: '' },
 ]
 
 export function DataManagementDialog({
@@ -51,6 +52,7 @@ export function DataManagementDialog({
   onOpenChange,
   onAfterImport,
 }: DataManagementDialogProps) {
+  const { t } = useI18n()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [stage, setStage] = useState<Stage>('menu')
   const [pendingBackup, setPendingBackup] = useState<AxisBackup | null>(null)
@@ -87,7 +89,7 @@ export function DataManagementDialog({
       setPendingSummary(summary)
       setStage('import-preview')
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'ファイルの読み込みに失敗しました')
+      setErrorMsg(err instanceof Error ? err.message : t.data.fileReadError)
       setStage('import-error')
     } finally {
       // 同じファイルを再選択できるようにクリア
@@ -101,8 +103,8 @@ export function DataManagementDialog({
     applyBackup(pendingBackup, mode)
     setSuccessMsg(
       mode === 'replace'
-        ? 'データを置き換えました。再読み込みします。'
-        : 'データをマージしました。再読み込みします。'
+        ? t.data.replaced
+        : t.data.merged
     )
     setStage('import-success')
     // 少し待ってからリロード
@@ -130,7 +132,7 @@ export function DataManagementDialog({
                 データの管理
               </DialogTitle>
               <DialogDescription>
-                全データをバックアップまたは別端末から復元できます。
+                {t.data.desc}
               </DialogDescription>
             </DialogHeader>
 
@@ -146,9 +148,9 @@ export function DataManagementDialog({
               >
                 <FileJson className="h-4 w-4 text-food" />
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-medium">JSON で全データをダウンロード</p>
+                  <p className="text-sm font-medium">{t.data.exportJSON}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    バックアップ / 別端末への移行用
+                    {t.data.exportJSONDesc}
                   </p>
                 </div>
               </Button>
@@ -160,9 +162,9 @@ export function DataManagementDialog({
               >
                 <FileText className="h-4 w-4 text-money" />
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-medium">CSV 形式で個別エクスポート</p>
+                  <p className="text-sm font-medium">{t.data.exportCSV}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    Excel / Numbers / Google Sheets で開ける
+                    {t.data.exportCSVDesc}
                   </p>
                 </div>
               </Button>
@@ -195,9 +197,9 @@ export function DataManagementDialog({
               >
                 <Upload className="h-4 w-4 text-foreground" />
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-medium">JSON ファイルから復元</p>
+                  <p className="text-sm font-medium">{t.data.importJSON}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    バックアップファイルを選択してプレビュー
+                    {t.data.importJSONDesc}
                   </p>
                 </div>
               </Button>
@@ -215,21 +217,21 @@ export function DataManagementDialog({
         {stage === 'import-preview' && pendingBackup && pendingSummary && (
           <>
             <DialogHeader>
-              <DialogTitle>インポート内容を確認</DialogTitle>
+              <DialogTitle>{t.data.importPreview}</DialogTitle>
               <DialogDescription>
-                取り込むデータを確認してください。
+                {t.data.importPreviewDesc}
               </DialogDescription>
             </DialogHeader>
 
             <div className="rounded-lg border border-border bg-secondary/40 p-3 space-y-1 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">エクスポート日時</span>
+                <span className="text-muted-foreground">{t.data.exportDate}</span>
                 <span className="text-foreground">
                   {new Date(pendingBackup.exportedAt).toLocaleString()}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">フォーマット</span>
+                <span className="text-muted-foreground">{t.data.format}</span>
                 <span className="text-foreground font-mono">
                   v{pendingBackup.version}
                 </span>
@@ -237,23 +239,23 @@ export function DataManagementDialog({
             </div>
 
             <div className="space-y-1 text-sm">
-              <SummaryRow label="取引" count={pendingSummary.transactions} />
-              <SummaryRow label="カテゴリ" count={pendingSummary.categories} />
-              <SummaryRow label="予算" count={pendingSummary.budgets} />
-              <SummaryRow label="ワークアウト" count={pendingSummary.workoutSessions} />
-              <SummaryRow label="食事記録" count={pendingSummary.foods} />
-              <SummaryRow label="カスタム食品" count={pendingSummary.customFoods} />
-              <SummaryRow label="レシピ" count={pendingSummary.recipes} />
-              <SummaryRow label="睡眠" count={pendingSummary.sleeps} />
-              <SummaryRow label="体組成" count={pendingSummary.bodies} />
-              <SummaryRow label="数値項目" count={pendingSummary.metrics} />
-              <SummaryRow label="数値エントリ" count={pendingSummary.metricEntries} />
+              <SummaryRow label={t.data.summaryTransactions} count={pendingSummary.transactions} />
+              <SummaryRow label={t.data.summaryCategories} count={pendingSummary.categories} />
+              <SummaryRow label={t.data.summaryBudgets} count={pendingSummary.budgets} />
+              <SummaryRow label={t.data.summaryWorkouts} count={pendingSummary.workoutSessions} />
+              <SummaryRow label={t.data.summaryFoods} count={pendingSummary.foods} />
+              <SummaryRow label={t.data.summaryCustomFoods} count={pendingSummary.customFoods} />
+              <SummaryRow label={t.data.summaryRecipes} count={pendingSummary.recipes} />
+              <SummaryRow label={t.data.summarySleeps} count={pendingSummary.sleeps} />
+              <SummaryRow label={t.data.summaryBodies} count={pendingSummary.bodies} />
+              <SummaryRow label={t.data.summaryMetrics} count={pendingSummary.metrics} />
+              <SummaryRow label={t.data.summaryMetricEntries} count={pendingSummary.metricEntries} />
             </div>
 
             <div className="rounded-lg border border-workout/30 bg-workout/10 p-3 flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 text-workout shrink-0 mt-0.5" />
               <p className="text-xs text-muted-foreground">
-                「置き換え」は既存データを完全に上書きします。念のため先に現在のデータをエクスポートしておくことをお勧めします。
+                {t.data.replaceWarning}
               </p>
             </div>
 
@@ -280,7 +282,7 @@ export function DataManagementDialog({
                 onClick={() => {
                   if (
                     confirm(
-                      '既存の全データを完全に上書きします。現在のデータは失われます。よろしいですか?'
+                      t.data.replaceConfirm
                     )
                   ) {
                     applyImport('replace')

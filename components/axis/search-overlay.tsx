@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button'
 import type { Transaction, WorkoutEntry, FoodEntry, TabType } from '@/lib/types'
 import { foodDatabase, type FoodItem } from '@/lib/food-database'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface SearchResult {
   id: string
-  type: '家計簿' | '筋トレ' | '食事' | '食品DB'
+  type: string
   label: string
   subtitle: string
   data?: FoodItem
@@ -35,6 +36,7 @@ export function SearchOverlay({
   onSelectFoodDB,
   onNavigateToTab,
 }: SearchOverlayProps) {
+  const { t } = useI18n()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -64,7 +66,7 @@ export function SearchOverlay({
       ) {
         newResults.push({
           id: `transaction-${t.id}`,
-          type: '家計簿',
+          type: t.searchOverlay.moneyType,
           label: `${t.type === '収入' ? '+' : '-'}${t.amount.toLocaleString()}円`,
           subtitle: `${t.date} - ${t.category}${t.memo ? ` - ${t.memo}` : ''}`,
         })
@@ -79,7 +81,7 @@ export function SearchOverlay({
       ) {
         newResults.push({
           id: `workout-${w.id}`,
-          type: '筋トレ',
+          type: t.searchOverlay.workoutType,
           label: w.exercise,
           subtitle: `${w.date} - ${w.muscleGroup} - ${w.sets}x${w.reps} @ ${w.weight}kg`,
         })
@@ -91,7 +93,7 @@ export function SearchOverlay({
       if (f.foodName.toLowerCase().includes(normalizedQuery)) {
         newResults.push({
           id: `food-${f.id}`,
-          type: '食事',
+          type: t.searchOverlay.foodType,
           label: f.foodName,
           subtitle: `${f.date} - ${f.mealTiming} - ${Math.round(f.calories)}kcal`,
         })
@@ -103,7 +105,7 @@ export function SearchOverlay({
       if (food.name.toLowerCase().includes(normalizedQuery)) {
         newResults.push({
           id: `fooddb-${food.id}`,
-          type: '食品DB',
+          type: t.searchOverlay.foodDBType,
           label: food.name,
           subtitle: `${food.calories}kcal / P:${food.protein}g / F:${food.fat}g / C:${food.carbs}g (per 100g)`,
           data: food,
@@ -115,17 +117,17 @@ export function SearchOverlay({
   }, [query, transactions, workouts, foods])
 
   const handleResultClick = (result: SearchResult) => {
-    if (result.type === '食品DB' && result.data) {
+    if (result.type === t.searchOverlay.foodDBType && result.data) {
       onSelectFoodDB(result.data.name)
       onNavigateToTab('food')
       onClose()
-    } else if (result.type === '家計簿') {
+    } else if (result.type === t.searchOverlay.moneyType) {
       onNavigateToTab('money')
       onClose()
-    } else if (result.type === '筋トレ') {
+    } else if (result.type === t.searchOverlay.workoutType) {
       onNavigateToTab('workout')
       onClose()
-    } else if (result.type === '食事') {
+    } else if (result.type === t.searchOverlay.foodType) {
       onNavigateToTab('food')
       onClose()
     }
@@ -133,12 +135,12 @@ export function SearchOverlay({
 
   const getTypeColor = (type: SearchResult['type']) => {
     switch (type) {
-      case '家計簿':
+      default:
         return 'bg-money/10 text-money'
-      case '筋トレ':
+      case 'workout-placeholder':
         return 'bg-workout/10 text-workout'
-      case '食事':
-      case '食品DB':
+      case 'food-placeholder':
+      case 'fooddb-placeholder':
         return 'bg-food/10 text-food'
     }
   }
@@ -152,7 +154,7 @@ export function SearchOverlay({
         <Input
           ref={inputRef}
           type="text"
-          placeholder="検索..."
+          placeholder={t.common.searchPlaceholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="flex-1 border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
@@ -170,11 +172,11 @@ export function SearchOverlay({
       <div className="h-[calc(100vh-56px)] overflow-y-auto p-4">
         {query.trim() === '' ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            検索キーワードを入力してください
+            {t.common.searchKeywordPrompt}
           </p>
         ) : results.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            結果が見つかりませんでした
+            {t.common.noResults}
           </p>
         ) : (
           <div className="space-y-2">

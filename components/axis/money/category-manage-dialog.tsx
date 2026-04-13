@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import type { MoneyCategory } from '@/lib/types'
 import { getIconComponent } from '@/lib/tab-items'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface CategoryManageDialogProps {
   open: boolean
@@ -68,6 +69,7 @@ export function CategoryManageDialog({
   onDelete,
   onMove,
 }: CategoryManageDialogProps) {
+  const { t } = useI18n()
   const [view, setView] = useState<'list' | 'add'>('list')
   const [type, setType] = useState<'収入' | '支出'>('支出')
   const [name, setName] = useState('')
@@ -99,9 +101,9 @@ export function CategoryManageDialog({
         {view === 'list' ? (
           <>
             <DialogHeader>
-              <DialogTitle>カテゴリ管理</DialogTitle>
+              <DialogTitle>{t.money.categoryManage}</DialogTitle>
               <DialogDescription>
-                家計簿のカテゴリを追加・並び替え・削除できます。
+                {t.money.categoryManageDesc}
               </DialogDescription>
             </DialogHeader>
 
@@ -166,7 +168,7 @@ export function CategoryManageDialog({
                       variant="ghost"
                       className="h-7 w-7 text-muted-foreground hover:text-destructive"
                       onClick={() => {
-                        if (confirm(`「${cat.name}」を削除しますか?`)) {
+                        if (confirm(t.common.deleteConfirmName(cat.name))) {
                           onDelete(cat.id)
                         }
                       }}
@@ -178,7 +180,7 @@ export function CategoryManageDialog({
               })}
               {filtered.length === 0 && (
                 <p className="text-center text-sm text-muted-foreground py-8">
-                  カテゴリがありません
+                  {t.money.noCategories}
                 </p>
               )}
             </div>
@@ -233,10 +235,10 @@ export function CategoryManageDialog({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-muted-foreground">名前</Label>
+              <Label className="text-muted-foreground">{t.common.name}</Label>
               <Input
                 type="text"
-                placeholder="例: コンビニ"
+                placeholder={t.money.namePlaceholder}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="bg-secondary border-border text-foreground"
@@ -244,7 +246,7 @@ export function CategoryManageDialog({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-muted-foreground">アイコン</Label>
+              <Label className="text-muted-foreground">{t.common.icon}</Label>
               <div className="grid grid-cols-8 gap-1 max-h-40 overflow-y-auto">
                 {iconChoices.map((name) => {
                   const Icon = getIconComponent(name)
@@ -268,7 +270,7 @@ export function CategoryManageDialog({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-muted-foreground">色</Label>
+              <Label className="text-muted-foreground">{t.common.color}</Label>
               <div className="grid grid-cols-8 gap-1">
                 {colorChoices.map((c) => (
                   <button

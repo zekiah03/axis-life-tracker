@@ -15,6 +15,7 @@ import {
   type NativeHealthAvailability,
 } from '@/lib/native-health'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface MetricDetailTabProps {
   metric: MetricDefinition
@@ -49,6 +50,7 @@ export function MetricDetailTab({
   onDeleteEntry,
   onSyncFromHealth,
 }: MetricDetailTabProps) {
+  const { t } = useI18n()
   const [value, setValue] = useState('')
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [availability, setAvailability] = useState<NativeHealthAvailability | null>(null)
@@ -140,13 +142,13 @@ export function MetricDetailTab({
     try {
       const ok = await requestAccess([metric.healthSource])
       if (!ok) {
-        setSyncMessage('権限が許可されませんでした')
+        setSyncMessage(t.common.permissionDenied)
         setSyncing(false)
         return
       }
       const sums = await fetchDailySums(metric.healthSource, 7)
       if (sums.length === 0) {
-        setSyncMessage('直近7日間のデータはありません')
+        setSyncMessage(t.common.noDataFor7Days)
         setSyncing(false)
         return
       }
@@ -156,12 +158,12 @@ export function MetricDetailTab({
       const added = onSyncFromHealth ? await onSyncFromHealth(metric) : 0
       setSyncMessage(
         added !== null && added !== undefined
-          ? `${added}日分を同期しました`
-          : `${sums.length}日分を取得しました`
+          ? t.common.syncedDays(added)
+          : t.common.syncedDaysFetched(sums.length)
       )
     } catch (err) {
       setSyncMessage(
-        err instanceof Error ? `同期に失敗: ${err.message}` : '同期に失敗しました'
+        err instanceof Error ? t.metrics.syncFailedWith(err.message) : t.metrics.syncFailedGeneric
       )
     } finally {
       setSyncing(false)
@@ -181,7 +183,7 @@ export function MetricDetailTab({
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Icon className="h-4 w-4" style={{ color: metric.color }} />
-            <h3 className="text-sm font-medium text-muted-foreground">今日の{metric.name}</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">{t.metrics.todayValue(metric.name)}</h3>
           </div>
           <div className="flex items-baseline justify-between">
             <p className="text-3xl font-bold" style={{ color: metric.color }}>
@@ -205,11 +207,11 @@ export function MetricDetailTab({
           {weeklyData && (
             <div className="mt-3 space-y-2">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>直近7日平均: <span className="font-semibold text-foreground">{formatValue(weeklyData.avg, metric.step)} {metric.unit}</span></span>
+                <span>{t.metrics.avg7Days}: <span className="font-semibold text-foreground">{formatValue(weeklyData.avg, metric.step)} {metric.unit}</span></span>
                 {weeklyData.streak > 0 && (
                   <span className="flex items-center gap-1" style={{ color: metric.color }}>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
-                    {weeklyData.streak}日連続
+                    {t.metrics.consecutiveDays(weeklyData.streak)}
                   </span>
                 )}
               </div>
@@ -228,7 +230,7 @@ export function MetricDetailTab({
                         }}
                       />
                       <span className="text-[7px] text-muted-foreground">
-                        {['日','月','火','水','木','金','土'][new Date(bar.date).getDay()]}
+                        {t.dow[new Date(bar.date).getDay()]}
                       </span>
                     </div>
                   )
@@ -250,10 +252,10 @@ export function MetricDetailTab({
               />
               <h3 className="text-sm font-medium text-muted-foreground">
                 {availability.platform === 'ios'
-                  ? 'ヘルスケアから同期'
+                  ? t.metrics.syncFromHealthIOS
                   : availability.platform === 'android'
-                  ? 'Health Connectから同期'
-                  : '端末データと連携'}
+                  ? t.metrics.syncFromHealthAndroid
+                  : t.metrics.syncFromHealth}
               </h3>
             </div>
             {availability.available ? (
@@ -266,7 +268,7 @@ export function MetricDetailTab({
                   onClick={handleSync}
                 >
                   <RefreshCw className={cn('h-4 w-4', syncing && 'animate-spin')} />
-                  {syncing ? '同期中...' : '直近7日を取得'}
+                  {syncing ? t.sleep.syncing : t.metrics.syncButton}
                 </Button>
                 {syncMessage && (
                   <p className="mt-2 text-xs text-muted-foreground">{syncMessage}</p>
@@ -275,8 +277,8 @@ export function MetricDetailTab({
             ) : (
               <p className="text-xs text-muted-foreground">
                 {availability.platform === 'web'
-                  ? 'この機能はネイティブアプリでのみ利用できます。'
-                  : availability.reason || '利用できません'}
+                  ? t.metrics.nativeOnly
+                  : availability.reason || t.common.notAvailable}
               </p>
             )}
           </CardContent>
@@ -288,7 +290,7 @@ export function MetricDetailTab({
         <CardContent className="p-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-muted-foreground">値 ({metric.unit})</Label>
+              <Label className="text-muted-foreground">{t.metrics.value(metric.unit)}</Label>
               <Input
                 type="number"
                 inputMode="decimal"
@@ -298,7 +300,7 @@ export function MetricDetailTab({
                 placeholder={
                   metric.minValue !== undefined && metric.maxValue !== undefined
                     ? `${metric.minValue} 〜 ${metric.maxValue}`
-                    : '値を入力'
+                    : t.metrics.enterValue
                 }
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
@@ -306,7 +308,7 @@ export function MetricDetailTab({
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-muted-foreground">日付</Label>
+              <Label className="text-muted-foreground">{t.common.date}</Label>
               <Input
                 type="date"
                 value={date}
@@ -329,9 +331,9 @@ export function MetricDetailTab({
       {/* 履歴 */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <h3 className="mb-3 text-sm font-medium text-muted-foreground">記録履歴</h3>
+          <h3 className="mb-3 text-sm font-medium text-muted-foreground">{t.metrics.recordHistory}</h3>
           {sortedEntries.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">記録がありません</p>
+            <p className="py-4 text-center text-sm text-muted-foreground">{t.metrics.noRecords}</p>
           ) : (
             <div className="space-y-2">
               {sortedEntries.map((entry) => (

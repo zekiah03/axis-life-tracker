@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/lib/i18n'
 
 interface DatePickerProps {
   date: string // YYYY-MM-DD
@@ -23,18 +24,19 @@ export function getToday(): string {
   return new Date().toISOString().split('T')[0]
 }
 
-function formatJP(dateStr: string): string {
+function formatJP(dateStr: string, t: any): string {
   const [y, m, d] = dateStr.split('-').map(Number)
   const date = new Date(y, m - 1, d)
-  const dow = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()]
+  const dow = t.dow[date.getDay()]
   const today = getToday()
-  if (dateStr === today) return `今日 (${m}月${d}日 ${dow})`
+  if (dateStr === today) return t.food.todayLabel(m, d, dow)
   const yest = shiftDay(today, -1)
-  if (dateStr === yest) return `昨日 (${m}月${d}日 ${dow})`
-  return `${m}月${d}日 (${dow})`
+  if (dateStr === yest) return t.food.yesterdayLabel(m, d, dow)
+  return t.food.dateLabel(m, d, dow)
 }
 
 export function FoodDatePicker({ date, onChange }: DatePickerProps) {
+  const { t } = useI18n()
   const today = getToday()
   const isToday = date === today
   return (
@@ -54,7 +56,7 @@ export function FoodDatePicker({ date, onChange }: DatePickerProps) {
         className="flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-muted-foreground disabled:hover:text-foreground transition-colors"
       >
         <Calendar className="h-4 w-4 text-muted-foreground" />
-        {formatJP(date)}
+        {formatJP(date, t)}
       </button>
       <Button
         variant="ghost"

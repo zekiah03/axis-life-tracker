@@ -30,6 +30,7 @@ import {
 } from '@/lib/activity-presets'
 import { getIconComponent } from '@/lib/tab-items'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface ActivityTabProps {
   type: ActivityType
@@ -39,19 +40,15 @@ interface ActivityTabProps {
 }
 
 const intensityLabels: Record<ActivityIntensity, { label: string; color: string }> = {
-  low: { label: '低', color: '#22d3a0' },
-  medium: { label: '中', color: '#facc15' },
-  high: { label: '高', color: '#ef4444' },
+  low: { label: '', color: '#22d3a0' },
+  medium: { label: '', color: '#facc15' },
+  high: { label: '', color: '#ef4444' },
 }
 
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes}分`
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return m > 0 ? `${h}時間${m}分` : `${h}時間`
-}
+// formatDuration moved to use t.activity.formatDuration
 
 export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps) {
+  const { t } = useI18n()
   const [dialogOpen, setDialogOpen] = useState(false)
   const presets = type === 'cardio' ? cardioPresets : stretchPresets
   const isCardio = type === 'cardio'
@@ -146,27 +143,27 @@ export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps
       <div className={cn('grid gap-2', isCardio ? 'grid-cols-4' : 'grid-cols-2')}>
         <Card className="bg-card border-border">
           <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground">今週</p>
+            <p className="text-[10px] text-muted-foreground">{t.activity.thisWeek}</p>
             <p className="text-sm font-bold text-foreground mt-1">{weeklySummary.count} 回</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground">合計時間</p>
-            <p className="text-sm font-bold text-foreground mt-1">{formatDuration(weeklySummary.totalMinutes)}</p>
+            <p className="text-[10px] text-muted-foreground">{t.activity.totalTime}</p>
+            <p className="text-sm font-bold text-foreground mt-1">{t.activity.formatDuration(weeklySummary.totalMinutes)}</p>
           </CardContent>
         </Card>
         {isCardio && (
           <>
             <Card className="bg-card border-border">
               <CardContent className="p-3">
-                <p className="text-[10px] text-muted-foreground">距離</p>
+                <p className="text-[10px] text-muted-foreground">{t.activity.distance}</p>
                 <p className="text-sm font-bold text-foreground mt-1">{weeklySummary.totalDistance.toFixed(1)} km</p>
               </CardContent>
             </Card>
             <Card className="bg-card border-border">
               <CardContent className="p-3">
-                <p className="text-[10px] text-muted-foreground">消費</p>
+                <p className="text-[10px] text-muted-foreground">{t.activity.burned}</p>
                 <p className="text-sm font-bold text-foreground mt-1">{weeklySummary.totalCalories} kcal</p>
               </CardContent>
             </Card>
@@ -178,11 +175,11 @@ export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps
       <Card className="bg-card border-border">
         <CardContent className="p-4">
           <h3 className="mb-3 text-sm font-medium text-muted-foreground">
-            {isCardio ? '有酸素運動の記録' : 'ストレッチの記録'}
+            {isCardio ? t.activity.cardioHistory : t.activity.stretchHistory}
           </h3>
           {sortedEntries.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              まだ記録がありません
+              {t.common.noRecords}
             </p>
           ) : (
             <div className="space-y-2">
@@ -214,7 +211,7 @@ export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps
                             className="text-[10px] font-medium rounded-full px-1.5 py-0"
                             style={{ color: intInfo.color, backgroundColor: intInfo.color + '22' }}
                           >
-                            {intInfo.label}
+                            {[t.activity.intensityLow, t.activity.intensityMedium, t.activity.intensityHigh][['low','medium','high'].indexOf(entry.intensity || 'medium')]}
                           </span>
                         )}
                       </div>
@@ -222,7 +219,7 @@ export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps
                         <span>{entry.date}</span>
                         <span className="flex items-center gap-0.5">
                           <Timer className="h-3 w-3" />
-                          {formatDuration(entry.duration)}
+                          {t.activity.formatDuration(entry.duration)}
                         </span>
                         {entry.distance && (
                           <span className="flex items-center gap-0.5">
@@ -293,14 +290,14 @@ export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps
         <DialogContent className="max-w-[440px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {isCardio ? '有酸素運動を記録' : 'ストレッチを記録'}
+              {isCardio ? t.activity.recordCardio : t.activity.recordStretch}
             </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* 種目選択 */}
             <div className="space-y-2">
-              <Label className="text-muted-foreground">種目</Label>
+              <Label className="text-muted-foreground">{t.activity.exercise}</Label>
               <div className="grid grid-cols-3 gap-2">
                 {presets.map((preset) => {
                   const Icon = getIconComponent(preset.icon)
@@ -332,7 +329,7 @@ export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps
 
             {/* 時間 */}
             <div className="space-y-2">
-              <Label className="text-muted-foreground">時間 (分)</Label>
+              <Label className="text-muted-foreground">{t.activity.duration}</Label>
               <div className="flex gap-2">
                 {[10, 15, 20, 30, 45, 60].map(v => (
                   <button
@@ -353,7 +350,7 @@ export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps
               <Input
                 type="number"
                 inputMode="numeric"
-                placeholder="カスタム値"
+                placeholder={t.common.customValue}
                 value={duration}
                 onChange={(e) => handleDurationChange(e.target.value)}
                 className="bg-secondary border-border text-foreground"
@@ -364,34 +361,34 @@ export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps
             {isCardio && (
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-muted-foreground text-xs">距離 (km)</Label>
+                  <Label className="text-muted-foreground text-xs">{t.activity.distanceKm}</Label>
                   <Input
                     type="number"
                     inputMode="decimal"
                     step="0.1"
-                    placeholder="任意"
+                    placeholder={t.common.optional}
                     value={distance}
                     onChange={(e) => setDistance(e.target.value)}
                     className="bg-secondary border-border text-foreground text-sm"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-muted-foreground text-xs">カロリー</Label>
+                  <Label className="text-muted-foreground text-xs">{t.activity.calories}</Label>
                   <Input
                     type="number"
                     inputMode="numeric"
-                    placeholder="自動推定"
+                    placeholder={t.activity.autoEstimate}
                     value={calories}
                     onChange={(e) => setCalories(e.target.value)}
                     className="bg-secondary border-border text-foreground text-sm"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-muted-foreground text-xs">心拍 (bpm)</Label>
+                  <Label className="text-muted-foreground text-xs">{t.activity.heartRate}</Label>
                   <Input
                     type="number"
                     inputMode="numeric"
-                    placeholder="任意"
+                    placeholder={t.common.optional}
                     value={heartRate}
                     onChange={(e) => setHeartRate(e.target.value)}
                     className="bg-secondary border-border text-foreground text-sm"
@@ -403,7 +400,7 @@ export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps
             {/* ストレッチ専用: 部位選択 */}
             {!isCardio && (
               <div className="space-y-2">
-                <Label className="text-muted-foreground">部位</Label>
+                <Label className="text-muted-foreground">{t.activity.bodyParts}</Label>
                 <div className="flex flex-wrap gap-1">
                   {bodyPartOptions.map(bp => (
                     <button
@@ -426,7 +423,7 @@ export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps
 
             {/* 強度 */}
             <div className="space-y-2">
-              <Label className="text-muted-foreground">強度</Label>
+              <Label className="text-muted-foreground">{t.activity.intensity}</Label>
               <div className="grid grid-cols-3 gap-2">
                 {(['low', 'medium', 'high'] as ActivityIntensity[]).map(level => {
                   const info = intensityLabels[level]
@@ -442,7 +439,7 @@ export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps
                           : 'bg-secondary border-border text-muted-foreground'
                       )}
                     >
-                      <span style={{ color: info.color }}>{info.label}</span>
+                      <span style={{ color: info.color }}>{level === 'low' ? t.activity.intensityLow : level === 'medium' ? t.activity.intensityMedium : t.activity.intensityHigh}</span>
                     </button>
                   )
                 })}
@@ -451,7 +448,7 @@ export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps
 
             {/* 日付 */}
             <div className="space-y-2">
-              <Label className="text-muted-foreground">日付</Label>
+              <Label className="text-muted-foreground">{t.common.date}</Label>
               <Input
                 type="date"
                 value={date}
@@ -462,9 +459,9 @@ export function ActivityTab({ type, entries, onAdd, onDelete }: ActivityTabProps
 
             {/* メモ */}
             <div className="space-y-2">
-              <Label className="text-muted-foreground">メモ (任意)</Label>
+              <Label className="text-muted-foreground">{t.activity.memoOptional}</Label>
               <Textarea
-                placeholder="コンディション、ペース、感想など"
+                placeholder={t.activity.memoPlaceholder}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="bg-secondary border-border text-foreground resize-none"

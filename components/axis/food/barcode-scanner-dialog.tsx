@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { createBarcodeDetector, isBarcodeSupported } from '@/lib/barcode'
+import { useI18n } from '@/lib/i18n'
 
 interface BarcodeScannerDialogProps {
   open: boolean
@@ -22,6 +23,7 @@ export function BarcodeScannerDialog({
   onOpenChange,
   onScanned,
 }: BarcodeScannerDialogProps) {
+  const { t } = useI18n()
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const stopLoopRef = useRef(false)
@@ -35,7 +37,7 @@ export function BarcodeScannerDialog({
     }
     if (!isBarcodeSupported()) {
       setStatus('error')
-      setError('この環境ではバーコードスキャンに対応していません (Chrome/Android 推奨)')
+      setError(t.food.barcodeNotSupported)
       return
     }
     start()
@@ -63,8 +65,8 @@ export function BarcodeScannerDialog({
       setStatus('error')
       setError(
         err instanceof Error
-          ? `カメラにアクセスできません: ${err.message}`
-          : 'カメラにアクセスできません'
+          ? t.food.cameraErrorWith(err.message)
+          : t.food.cameraError
       )
     }
   }
@@ -132,7 +134,7 @@ export function BarcodeScannerDialog({
               {status === 'starting' && (
                 <>
                   <Loader2 className="h-6 w-6 text-food animate-spin mb-2" />
-                  <p className="text-sm text-muted-foreground">カメラを起動中...</p>
+                  <p className="text-sm text-muted-foreground">{t.food.cameraStarting}</p>
                 </>
               )}
               {status === 'error' && (

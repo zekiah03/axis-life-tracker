@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/lib/i18n'
 
 interface MonthPickerProps {
   month: string // YYYY-MM
@@ -29,6 +30,7 @@ export function getCurrentMonth(): string {
 }
 
 export function MonthPicker({ month, onChange }: MonthPickerProps) {
+  const { t } = useI18n()
   const { year, monthIndex } = parseMonth(month)
   const isCurrentMonth = month === getCurrentMonth()
   return (
@@ -48,7 +50,7 @@ export function MonthPicker({ month, onChange }: MonthPickerProps) {
         className="flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-muted-foreground disabled:hover:text-foreground transition-colors"
       >
         <CalendarDays className="h-4 w-4 text-muted-foreground" />
-        {year}年 {monthIndex + 1}月
+        {t.money.monthLabel(year, monthIndex + 1)}
       </button>
       <Button
         variant="ghost"

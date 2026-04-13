@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { WorkoutRoutine, RoutineExercise } from '@/lib/types'
 import { exercisePresets, muscleGroups, searchExercises } from '@/lib/exercise-presets'
+import { useI18n } from '@/lib/i18n'
 
 interface RoutineDialogProps {
   open: boolean
@@ -30,6 +31,7 @@ export function RoutineDialog({
   editing,
   onSave,
 }: RoutineDialogProps) {
+  const { t } = useI18n()
   const [view, setView] = useState<View>('form')
   const [name, setName] = useState('')
   const [exercises, setExercises] = useState<RoutineExercise[]>([])
@@ -84,17 +86,17 @@ export function RoutineDialog({
         {view === 'form' ? (
           <>
             <DialogHeader>
-              <DialogTitle>{editing ? 'ルーティンを編集' : 'ルーティンを作成'}</DialogTitle>
+              <DialogTitle>{editing ? t.workout.routineEdit : t.workout.routineCreateTitle}</DialogTitle>
               <DialogDescription>
-                種目のセットを保存して、ワンタップでワークアウトを開始できます。
+                {t.workout.routineDesc}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-2">
-              <Label className="text-muted-foreground">ルーティン名</Label>
+              <Label className="text-muted-foreground">{t.workout.routineName}</Label>
               <Input
                 type="text"
-                placeholder="例: Push Day A"
+                placeholder={t.workout.routineNamePlaceholder}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="bg-secondary border-border text-foreground"
@@ -103,7 +105,7 @@ export function RoutineDialog({
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-muted-foreground">種目 ({exercises.length})</Label>
+                <Label className="text-muted-foreground">{t.workout.addExercise} ({exercises.length})</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -118,7 +120,7 @@ export function RoutineDialog({
 
               {exercises.length === 0 ? (
                 <p className="text-center text-xs text-muted-foreground py-4">
-                  種目を追加してください
+                  {t.workout.addExercisePrompt}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -146,7 +148,7 @@ export function RoutineDialog({
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <div className="space-y-1">
-                          <Label className="text-muted-foreground text-[10px]">セット数</Label>
+                          <Label className="text-muted-foreground text-[10px]">{t.workout.setsCount}</Label>
                           <Input
                             type="number"
                             inputMode="numeric"
@@ -156,7 +158,7 @@ export function RoutineDialog({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-muted-foreground text-[10px]">レップ数</Label>
+                          <Label className="text-muted-foreground text-[10px]">{t.workout.repsCount}</Label>
                           <Input
                             type="number"
                             inputMode="numeric"
@@ -166,7 +168,7 @@ export function RoutineDialog({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-muted-foreground text-[10px]">重量 (kg)</Label>
+                          <Label className="text-muted-foreground text-[10px]">{t.workout.weightKg}</Label>
                           <Input
                             type="number"
                             inputMode="decimal"
@@ -211,7 +213,7 @@ export function RoutineDialog({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="種目名を検索..."
+                placeholder={t.workout.searchExercise}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="bg-secondary border-border text-foreground pl-9"

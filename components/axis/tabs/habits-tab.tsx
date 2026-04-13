@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dialog'
 import type { HabitEntry, HabitGoal, HabitType } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface HabitsTabProps {
   entries: HabitEntry[]
@@ -46,52 +47,22 @@ interface HabitMeta {
   quickValues: number[]
 }
 
-const habitMetas: HabitMeta[] = [
-  {
-    type: 'study',
-    label: '勉強',
-    icon: BookOpen,
-    color: '#a78bfa',
-    defaultUnit: '分',
-    subjectLabel: '科目',
-    subjectPlaceholder: '例: 数学, 英語, プログラミング',
-    quickValues: [15, 30, 45, 60, 90, 120],
-  },
-  {
-    type: 'reading',
-    label: '読書',
-    icon: Book,
-    color: '#60a5fa',
-    defaultUnit: 'ページ',
-    subjectLabel: 'タイトル',
-    subjectPlaceholder: '例: アトミック・ハビッツ',
-    quickValues: [10, 20, 30, 50, 100],
-  },
-  {
-    type: 'meditation',
-    label: '瞑想',
-    icon: Sparkles,
-    color: '#22d3a0',
-    defaultUnit: '分',
-    subjectLabel: '種類',
-    subjectPlaceholder: '例: 呼吸法, ボディスキャン, 歩行瞑想',
-    quickValues: [5, 10, 15, 20, 30],
-  },
-  {
-    type: 'screentime',
-    label: 'スクリーンタイム',
-    icon: Smartphone,
-    color: '#71717a',
-    defaultUnit: '時間',
-    quickValues: [1, 2, 3, 4, 5, 6],
-  },
-]
+function buildHabitMetas(t: any): HabitMeta[] {
+  return [
+    { type: 'study', label: t.habits.study, icon: BookOpen, color: '#a78bfa', defaultUnit: t.habits.unitMinutes, subjectLabel: t.habits.subjectLabel, subjectPlaceholder: t.habits.subjectPlaceholder, quickValues: [15, 30, 45, 60, 90, 120] },
+    { type: 'reading', label: t.habits.reading, icon: Book, color: '#60a5fa', defaultUnit: t.habits.unitPages, subjectLabel: t.habits.titleLabel, subjectPlaceholder: t.habits.titlePlaceholder, quickValues: [10, 20, 30, 50, 100] },
+    { type: 'meditation', label: t.habits.meditation, icon: Sparkles, color: '#22d3a0', defaultUnit: t.habits.unitMinutes, subjectLabel: t.habits.typeLabel, subjectPlaceholder: t.habits.typePlaceholder, quickValues: [5, 10, 15, 20, 30] },
+    { type: 'screentime', label: t.habits.screentime, icon: Smartphone, color: '#71717a', defaultUnit: t.habits.unitHours, quickValues: [1, 2, 3, 4, 5, 6] },
+  ]
+}
 
-function getHabitMeta(type: HabitType): HabitMeta {
+function getHabitMeta(type: HabitType, habitMetas: HabitMeta[]): HabitMeta {
   return habitMetas.find(m => m.type === type) || habitMetas[0]
 }
 
 export function HabitsTab({ entries, goals, onAdd, onDelete, onSaveGoals, singleHabitMode }: HabitsTabProps) {
+  const { t } = useI18n()
+  const habitMetas = useMemo(() => buildHabitMetas(t), [t])
   const visibleMetas = singleHabitMode
     ? habitMetas.filter(m => m.type === singleHabitMode)
     : habitMetas
@@ -221,7 +192,7 @@ export function HabitsTab({ entries, goals, onAdd, onDelete, onSaveGoals, single
               {week && week.days > 0 && (
                 <div className="mt-1.5 flex items-center gap-1 text-[10px] text-muted-foreground">
                   <Flame className="h-3 w-3" style={{ color: week.days >= 5 ? meta.color : undefined }} />
-                  {week.days}/7日
+                  {week.days}{t.habits.daysCount}
                 </div>
               )}
             </button>
@@ -251,7 +222,7 @@ export function HabitsTab({ entries, goals, onAdd, onDelete, onSaveGoals, single
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 {(() => { const Icon = selectedHabit.icon; return <Icon className="h-5 w-5" style={{ color: selectedHabit.color }} /> })()}
-                {selectedHabit.label}を記録
+                {t.habits.recordHabit(selectedHabit.label)}
               </DialogTitle>
             </DialogHeader>
 
@@ -259,7 +230,7 @@ export function HabitsTab({ entries, goals, onAdd, onDelete, onSaveGoals, single
               {/* クイック入力ボタン */}
               <div className="space-y-2">
                 <Label className="text-muted-foreground">
-                  {selectedHabit.defaultUnit === 'ページ' ? 'ページ数' : `時間 (${selectedHabit.defaultUnit})`}
+                  {selectedHabit.defaultUnit === t.habits.unitPages ? t.habits.pageCount : t.habits.timeDuration(selectedHabit.defaultUnit)}
                 </Label>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedHabit.quickValues.map(v => (
@@ -281,7 +252,7 @@ export function HabitsTab({ entries, goals, onAdd, onDelete, onSaveGoals, single
                 <Input
                   type="number"
                   inputMode="decimal"
-                  placeholder="カスタム値"
+                  placeholder={t.common.customValue}
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                   className="bg-secondary border-border text-foreground"
@@ -291,7 +262,7 @@ export function HabitsTab({ entries, goals, onAdd, onDelete, onSaveGoals, single
               {/* 科目/タイトル (任意) */}
               {selectedHabit.subjectLabel && (
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground">{selectedHabit.subjectLabel} (任意)</Label>
+                  <Label className="text-muted-foreground">{t.habits.subjectOptional(selectedHabit.subjectLabel || '')}</Label>
                   <Input
                     type="text"
                     placeholder={selectedHabit.subjectPlaceholder}
@@ -304,10 +275,10 @@ export function HabitsTab({ entries, goals, onAdd, onDelete, onSaveGoals, single
 
               {/* メモ */}
               <div className="space-y-2">
-                <Label className="text-muted-foreground">メモ (任意)</Label>
+                <Label className="text-muted-foreground">{t.habits.memoOptional}</Label>
                 <Input
                   type="text"
-                  placeholder="気づき、内容など"
+                  placeholder={t.habits.memoPlaceholder}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="bg-secondary border-border text-foreground"
@@ -316,7 +287,7 @@ export function HabitsTab({ entries, goals, onAdd, onDelete, onSaveGoals, single
 
               {/* 日付 */}
               <div className="space-y-2">
-                <Label className="text-muted-foreground">日付</Label>
+                <Label className="text-muted-foreground">{t.common.date}</Label>
                 <Input
                   type="date"
                   value={date}
@@ -337,7 +308,7 @@ export function HabitsTab({ entries, goals, onAdd, onDelete, onSaveGoals, single
 
             {/* このhabbitの直近履歴 */}
             <div className="space-y-1 pt-2 border-t border-border">
-              <h4 className="text-xs text-muted-foreground">直近の記録</h4>
+              <h4 className="text-xs text-muted-foreground">{t.habits.recentRecords}</h4>
               {entries
                 .filter(e => e.habitType === selectedHabit.type)
                 .sort((a, b) => b.createdAt - a.createdAt)
@@ -371,15 +342,15 @@ export function HabitsTab({ entries, goals, onAdd, onDelete, onSaveGoals, single
       {/* 全履歴 */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <h3 className="mb-3 text-sm font-medium text-muted-foreground">習慣の記録</h3>
+          <h3 className="mb-3 text-sm font-medium text-muted-foreground">{t.habits.habitHistory}</h3>
           {sortedEntries.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              上のカードをタップして記録を始めましょう
+              {t.habits.startPrompt}
             </p>
           ) : (
             <div className="space-y-1.5">
               {sortedEntries.slice(0, 20).map((entry) => {
-                const meta = getHabitMeta(entry.habitType)
+                const meta = getHabitMeta(entry.habitType, habitMetas)
                 const Icon = meta.icon
                 return (
                   <div
@@ -415,9 +386,9 @@ export function HabitsTab({ entries, goals, onAdd, onDelete, onSaveGoals, single
       <Dialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen}>
         <DialogContent className="max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>日次目標を設定</DialogTitle>
+            <DialogTitle>{t.habits.dailyGoal}</DialogTitle>
             <DialogDescription>
-              各習慣の1日あたりの目標を入力してください。0にすると目標が解除されます。
+              {t.habits.dailyGoalDesc}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">

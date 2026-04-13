@@ -1,16 +1,16 @@
 'use client'
 
 import { createContext, useContext } from 'react'
-import { ja, type TranslationKeys } from './ja'
+import { ja, type TranslationKeys, type TranslationShape } from './ja'
 import { en } from './en'
 
 export type Locale = 'ja' | 'en'
 
-export const translations: Record<Locale, TranslationKeys> = { ja, en }
+export const translations: Record<Locale, TranslationShape> = { ja, en }
 
 export const I18nContext = createContext<{
   locale: Locale
-  t: TranslationKeys
+  t: TranslationShape
   setLocale: (locale: Locale) => void
 }>({
   locale: 'ja',
@@ -23,4 +23,4 @@ export function useI18n() {
 }
 
 export { ja, en }
-export type { TranslationKeys }
+export type { TranslationKeys, TranslationShape }

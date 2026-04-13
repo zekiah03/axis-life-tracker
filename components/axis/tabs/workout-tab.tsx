@@ -28,6 +28,7 @@ import {
 import { ActiveSession } from '@/components/axis/workout/active-session'
 import { RoutineDialog } from '@/components/axis/workout/routine-dialog'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface WorkoutTabProps {
   sessions: WorkoutSession[]
@@ -44,11 +45,10 @@ interface WorkoutTabProps {
   onDeleteRoutine: (id: string) => void
 }
 
-function formatDayLabel(dateStr: string): string {
+function formatDayLabel(dateStr: string, dow: readonly string[], dayLabel: (m: number, d: number, dow: string) => string): string {
   const [y, m, d] = dateStr.split('-').map(Number)
   const date = new Date(y, m - 1, d)
-  const dow = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()]
-  return `${m}月${d}日 (${dow})`
+  return dayLabel(m, d, dow[date.getDay()])
 }
 
 function formatDuration(startMs: number, endMs: number): string {
@@ -56,7 +56,7 @@ function formatDuration(startMs: number, endMs: number): string {
   const h = Math.floor(total / 3600)
   const m = Math.floor((total % 3600) / 60)
   if (h > 0) return `${h}h ${m}m`
-  return `${m}分`
+  return `${m}m`
 }
 
 export function WorkoutTab({
@@ -73,6 +73,7 @@ export function WorkoutTab({
   onSaveRoutine,
   onDeleteRoutine,
 }: WorkoutTabProps) {
+  const { t } = useI18n()
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
   const [routineDialogOpen, setRoutineDialogOpen] = useState(false)
   const [editingRoutine, setEditingRoutine] = useState<WorkoutRoutine | null>(null)
@@ -127,7 +128,7 @@ export function WorkoutTab({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <ListChecks className="h-4 w-4 text-workout" />
-              <h3 className="text-sm font-medium text-muted-foreground">ルーティン</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">{t.workout.routine}</h3>
             </div>
             <Button
               type="button"
@@ -145,7 +146,7 @@ export function WorkoutTab({
           </div>
           {routines.length === 0 ? (
             <p className="text-center text-xs text-muted-foreground py-3">
-              ルーティンを作成すると1タップでワークアウトを開始できます
+              {t.workout.routineEmpty}
             </p>
           ) : (
             <div className="space-y-2">
@@ -178,7 +179,7 @@ export function WorkoutTab({
                     variant="ghost"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive"
                     onClick={() => {
-                      if (confirm(`「${routine.name}」を削除しますか?`)) onDeleteRoutine(routine.id)
+                      if (confirm(t.common.deleteConfirmName(routine.name))) onDeleteRoutine(routine.id)
                     }}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -215,7 +216,7 @@ export function WorkoutTab({
           <Card className="bg-card border-border">
             <CardContent className="p-3">
               <div className="flex items-center gap-1 text-muted-foreground text-[10px]">
-                <Flame className="h-3 w-3" /> 今週のボリューム
+                <Flame className="h-3 w-3" /> {t.workout.weeklyVolume}
               </div>
               <p className="text-sm font-bold text-workout mt-1 truncate">
                 {totalWeeklyVolume.toLocaleString()}
@@ -226,18 +227,18 @@ export function WorkoutTab({
           <Card className="bg-card border-border">
             <CardContent className="p-3">
               <div className="flex items-center gap-1 text-muted-foreground text-[10px]">
-                <Calendar className="h-3 w-3" /> 総セッション
+                <Calendar className="h-3 w-3" /> {t.workout.totalSessions}
               </div>
               <p className="text-sm font-bold text-foreground mt-1">
                 {finishedSessions.length}
-                <span className="text-[10px] text-muted-foreground ml-0.5">回</span>
+                <span className="text-[10px] text-muted-foreground ml-0.5">{t.common.times}</span>
               </p>
             </CardContent>
           </Card>
           <Card className="bg-card border-border">
             <CardContent className="p-3">
               <div className="flex items-center gap-1 text-muted-foreground text-[10px]">
-                <Trophy className="h-3 w-3" /> 記録種目数
+                <Trophy className="h-3 w-3" /> {t.workout.trackedExercises}
               </div>
               <p className="text-sm font-bold text-foreground mt-1">
                 {records.size}
@@ -251,7 +252,7 @@ export function WorkoutTab({
       {records.size > 0 && (
         <Card className="bg-card border-border">
           <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-medium text-muted-foreground">種目別ベスト</h3>
+            <h3 className="mb-3 text-sm font-medium text-muted-foreground">{t.workout.exerciseBest}</h3>
             <div className="space-y-2">
               {Array.from(records.values())
                 .sort((a, b) => b.bestOneRM - a.bestOneRM)
@@ -264,7 +265,7 @@ export function WorkoutTab({
                     <span className="text-foreground truncate">{rec.exerciseName}</span>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
                       <span>
-                        最大{' '}
+                        {t.workout.max}{' '}
                         <span className="font-semibold text-workout">
                           {rec.bestWeight}kg
                         </span>
@@ -286,10 +287,10 @@ export function WorkoutTab({
       {/* セッション履歴 */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <h3 className="mb-3 text-sm font-medium text-muted-foreground">履歴</h3>
+          <h3 className="mb-3 text-sm font-medium text-muted-foreground">{t.workout.history}</h3>
           {!hasAnyData ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              まだ記録がありません
+              {t.workout.noRecords}
             </p>
           ) : (
             <div className="space-y-2">
@@ -322,13 +323,13 @@ export function WorkoutTab({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-foreground truncate">
-                              {session.name || formatDayLabel(session.date)}
+                              {session.name || formatDayLabel(session.date, t.dow, t.workout.dayLabel)}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
                             <span>{session.date}</span>
                             {duration && <span>· {duration}</span>}
-                            <span>· {setCount}セット</span>
+                            <span>· {setCount} {t.workout.sets}</span>
                             <span>· {volume.toLocaleString()}kg</span>
                           </div>
                         </div>
@@ -339,7 +340,7 @@ export function WorkoutTab({
                         className="h-7 w-7 text-muted-foreground hover:text-destructive"
                         onClick={(e) => {
                           e.stopPropagation()
-                          if (confirm('このセッションを削除しますか?')) {
+                          if (confirm(t.workout.deleteSessionConfirm)) {
                             onDeleteSession(session.id)
                           }
                         }}
@@ -353,7 +354,7 @@ export function WorkoutTab({
                           <div className="flex items-center gap-1.5 text-[11px]">
                             <Trophy className="h-3 w-3 text-workout" />
                             <span className="text-muted-foreground">
-                              最高1RM:{' '}
+                              {t.workout.max} 1RM:{' '}
                               <span className="text-foreground font-semibold">
                                 {best.exerciseName} {best.oneRM.toFixed(0)}kg
                               </span>
@@ -427,7 +428,7 @@ export function WorkoutTab({
                               {w.muscleGroup}
                             </span>
                             <span className="text-[10px] text-muted-foreground">
-                              {w.sets}セット × {w.reps}レップ @ {w.weight}kg
+                              {w.sets} {t.workout.sets} x {w.reps} reps @ {w.weight}kg
                             </span>
                           </div>
                         </div>

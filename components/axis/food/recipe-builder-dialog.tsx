@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Recipe, RecipeItem, CustomFoodItem } from '@/lib/types'
 import { foodDatabase, type FoodItem } from '@/lib/food-database'
+import { useI18n } from '@/lib/i18n'
 
 interface RecipeBuilderDialogProps {
   open: boolean
@@ -44,6 +45,7 @@ export function RecipeBuilderDialog({
   editing,
   onSave,
 }: RecipeBuilderDialogProps) {
+  const { t } = useI18n()
   const [view, setView] = useState<View>('form')
   const [name, setName] = useState('')
   const [servings, setServings] = useState('1')
@@ -105,7 +107,7 @@ export function RecipeBuilderDialog({
   }, [items, allFoods])
 
   const addItem = (food: FoodItem) => {
-    const defaultAmount = food.category === 'dish' ? 100 : 100 // 1人前=100 or 100g
+    const defaultAmount = food.category === 'dish' ? 100 : 100 // 1{t.food.servingUnit}=100 or 100g
     setItems(prev => [
       ...prev,
       { foodItemId: food.id, foodName: food.name, amount: defaultAmount },
@@ -145,7 +147,7 @@ export function RecipeBuilderDialog({
           <>
             <DialogHeader>
               <DialogTitle>
-                {editing ? 'レシピを編集' : 'レシピを作成'}
+                {editing ? t.food.editRecipe : t.food.createRecipe}
               </DialogTitle>
               <DialogDescription>
                 複数の食品をまとめて1つのレシピにすると、1タップで再追加できます。
@@ -154,17 +156,17 @@ export function RecipeBuilderDialog({
 
             <div className="flex gap-2">
               <div className="flex-1 space-y-2">
-                <Label className="text-muted-foreground">レシピ名</Label>
+                <Label className="text-muted-foreground">{t.food.recipeName}</Label>
                 <Input
                   type="text"
-                  placeholder="例: 鶏胸肉のトマト煮"
+                  placeholder={t.food.recipeNamePlaceholder}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="bg-secondary border-border text-foreground"
                 />
               </div>
               <div className="w-24 space-y-2">
-                <Label className="text-muted-foreground">何人前</Label>
+                <Label className="text-muted-foreground">{t.food.recipeServings}</Label>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -178,7 +180,7 @@ export function RecipeBuilderDialog({
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-muted-foreground">食品</Label>
+                <Label className="text-muted-foreground">{t.food.foodsInRecipe}</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -192,7 +194,7 @@ export function RecipeBuilderDialog({
               </div>
               {items.length === 0 ? (
                 <p className="text-center text-xs text-muted-foreground py-4">
-                  まだ食品がありません
+                  {t.food.noFoodsInRecipe}
                 </p>
               ) : (
                 <div className="space-y-1">
@@ -234,7 +236,7 @@ export function RecipeBuilderDialog({
                             className="bg-secondary border-border text-foreground text-right text-sm h-8 pr-6"
                           />
                           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
-                            {isDish ? '人前' : 'g'}
+                            {isDish ? '{t.food.servingUnit}' : 'g'}
                           </span>
                         </div>
                         <Button
@@ -323,7 +325,7 @@ export function RecipeBuilderDialog({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="食品名を検索..."
+                placeholder={t.food.searchFood}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="bg-secondary border-border text-foreground pl-9"

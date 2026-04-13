@@ -20,6 +20,7 @@ import { TransactionDialog } from '@/components/axis/money/transaction-dialog'
 import { CategoryManageDialog } from '@/components/axis/money/category-manage-dialog'
 import { BudgetManageDialog } from '@/components/axis/money/budget-manage-dialog'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface MoneyTabProps {
   transactions: Transaction[]
@@ -35,18 +36,16 @@ interface MoneyTabProps {
   onDeleteBudget: (categoryId: string, month: string) => void
 }
 
-function formatYen(n: number): string {
-  return n.toLocaleString() + '円'
-}
+// formatYen removed - use t.common.yen directly
 
-function formatDayLabel(dateStr: string): string {
+function formatDayLabel(dateStr: string, dow: readonly string[], dayLabel: (m: number, d: number, dow: string) => string): string {
   const [y, m, d] = dateStr.split('-').map(Number)
   const date = new Date(y, m - 1, d)
-  const dow = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()]
-  return `${m}月${d}日 (${dow})`
+  return dayLabel(m, d, dow[date.getDay()])
 }
 
 export function MoneyTab(props: MoneyTabProps) {
+  const { t } = useI18n()
   const {
     transactions,
     categories,
@@ -179,28 +178,28 @@ export function MoneyTab(props: MoneyTabProps) {
         <Card className="bg-card border-border">
           <CardContent className="p-3">
             <div className="flex items-center gap-1 text-muted-foreground text-[10px]">
-              <TrendingUp className="h-3 w-3" /> 収入
+              <TrendingUp className="h-3 w-3" /> {t.money.income}
             </div>
             <p className="text-sm font-bold text-money mt-1 truncate">
               {summary.income.toLocaleString()}
-              <span className="text-[10px] text-muted-foreground ml-0.5">円</span>
+              <span className="text-[10px] text-muted-foreground ml-0.5">{t.common.yen}</span>
             </p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-3">
             <div className="flex items-center gap-1 text-muted-foreground text-[10px]">
-              <TrendingDown className="h-3 w-3" /> 支出
+              <TrendingDown className="h-3 w-3" /> {t.money.expense}
             </div>
             <p className="text-sm font-bold text-destructive mt-1 truncate">
               {summary.expense.toLocaleString()}
-              <span className="text-[10px] text-muted-foreground ml-0.5">円</span>
+              <span className="text-[10px] text-muted-foreground ml-0.5">{t.common.yen}</span>
             </p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-3">
-            <div className="text-muted-foreground text-[10px]">収支</div>
+            <div className="text-muted-foreground text-[10px]">{t.money.balance}</div>
             <p
               className={cn(
                 'text-sm font-bold mt-1 truncate',
@@ -209,7 +208,7 @@ export function MoneyTab(props: MoneyTabProps) {
             >
               {summary.balance >= 0 ? '+' : ''}
               {summary.balance.toLocaleString()}
-              <span className="text-[10px] text-muted-foreground ml-0.5">円</span>
+              <span className="text-[10px] text-muted-foreground ml-0.5">{t.common.yen}</span>
             </p>
           </CardContent>
         </Card>
@@ -222,7 +221,7 @@ export function MoneyTab(props: MoneyTabProps) {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Target className="h-4 w-4 text-foreground" />
-                <h3 className="text-sm font-medium text-foreground">予算</h3>
+                <h3 className="text-sm font-medium text-foreground">{t.money.budget}</h3>
               </div>
               <Button
                 variant="ghost"
@@ -237,7 +236,7 @@ export function MoneyTab(props: MoneyTabProps) {
             {/* 総予算バー */}
             <div className="mb-3 space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">合計</span>
+                <span className="text-muted-foreground">{t.common.total}</span>
                 <span className="text-foreground">
                   <span
                     className={cn(
@@ -248,7 +247,7 @@ export function MoneyTab(props: MoneyTabProps) {
                     {summary.expense.toLocaleString()}
                   </span>
                   {' / '}
-                  {totalBudget.toLocaleString()} 円
+                  {totalBudget.toLocaleString()} {t.common.yen}
                 </span>
               </div>
               <div className="h-2 rounded-full bg-secondary overflow-hidden">
@@ -313,7 +312,7 @@ export function MoneyTab(props: MoneyTabProps) {
       {expenseByCategory.arr.length > 0 && (
         <Card className="bg-card border-border">
           <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-medium text-muted-foreground">支出の内訳</h3>
+            <h3 className="mb-3 text-sm font-medium text-muted-foreground">{t.money.expenseBreakdown}</h3>
             <div className="space-y-2">
               {expenseByCategory.arr.slice(0, 8).map(({ category, amount }) => {
                 const Icon = getIconComponent(category.icon)
@@ -330,7 +329,7 @@ export function MoneyTab(props: MoneyTabProps) {
                         </span>
                       </div>
                       <span className="text-foreground shrink-0 ml-2 font-semibold">
-                        {amount.toLocaleString()}円
+                        {amount.toLocaleString()}{t.common.yen}
                       </span>
                     </div>
                     <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
@@ -347,7 +346,7 @@ export function MoneyTab(props: MoneyTabProps) {
               })}
               {expenseByCategory.arr.length > 8 && (
                 <p className="text-xs text-muted-foreground text-center pt-1">
-                  他 {expenseByCategory.arr.length - 8} カテゴリ
+                  {t.common.moreCategories(expenseByCategory.arr.length - 8)}
                 </p>
               )}
             </div>
@@ -365,7 +364,7 @@ export function MoneyTab(props: MoneyTabProps) {
             onClick={() => setBudgetDialogOpen(true)}
           >
             <Target className="h-4 w-4" />
-            予算を設定
+            {t.money.setBudget}
           </Button>
         )}
         <Button
@@ -382,17 +381,17 @@ export function MoneyTab(props: MoneyTabProps) {
       {/* 日別取引リスト */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <h3 className="mb-3 text-sm font-medium text-muted-foreground">取引履歴</h3>
+          <h3 className="mb-3 text-sm font-medium text-muted-foreground">{t.money.transactionHistory}</h3>
           {transactionsByDay.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              この月の記録がありません
+              {t.money.noTransactionsThisMonth}
             </p>
           ) : (
             <div className="space-y-4">
               {transactionsByDay.map(({ date, items, dayBalance }) => (
                 <div key={date} className="space-y-1">
                   <div className="flex items-center justify-between text-xs text-muted-foreground pb-1 border-b border-border">
-                    <span>{formatDayLabel(date)}</span>
+                    <span>{formatDayLabel(date, t.dow, t.money.dayLabel)}</span>
                     <span
                       className={cn(
                         'font-semibold',
@@ -400,7 +399,7 @@ export function MoneyTab(props: MoneyTabProps) {
                       )}
                     >
                       {dayBalance >= 0 ? '+' : ''}
-                      {dayBalance.toLocaleString()}円
+                      {dayBalance.toLocaleString()}{t.common.yen}
                     </span>
                   </div>
                   {items.map((t) => {
@@ -434,7 +433,7 @@ export function MoneyTab(props: MoneyTabProps) {
                         >
                           {t.type === '収入' ? '+' : '-'}
                           {t.amount.toLocaleString()}
-                          <span className="text-[10px] text-muted-foreground ml-0.5">円</span>
+                          <span className="text-[10px] text-muted-foreground ml-0.5">{t.common.yen}</span>
                         </span>
                         <div className="flex items-center gap-0.5">
                           <Button

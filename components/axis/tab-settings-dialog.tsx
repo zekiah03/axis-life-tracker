@@ -17,6 +17,7 @@ import { BUILTIN_META, getIconComponent } from '@/lib/tab-items'
 import { metricPresets, type MetricPreset } from '@/lib/metric-presets'
 import { TAB_CATEGORIES, METRIC_CATEGORIES } from '@/lib/tab-categories'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface TabSettingsDialogProps {
   open: boolean
@@ -43,6 +44,7 @@ export function TabSettingsDialog({
   onRemoveMetric,
   onOpenDataManagement,
 }: TabSettingsDialogProps) {
+  const { t } = useI18n()
   const [view, setView] = useState<View>('list')
 
   const toggle = (id: string) => {
@@ -116,15 +118,15 @@ export function TabSettingsDialog({
         {view === 'list' ? (
           <>
             <DialogHeader>
-              <DialogTitle>タブの編集</DialogTitle>
+              <DialogTitle>{t.tabs.editTabs}</DialogTitle>
               <DialogDescription>
-                下部ナビに表示する項目の順番と表示/非表示を設定できます。Homeは固定です。
+                {t.tabs.editTabsDesc}
               </DialogDescription>
             </DialogHeader>
 
             {tabConfig.length === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-8">
-                項目がありません。「追加」から選んでください。
+                {t.common.noItems}
               </p>
             ) : (
               <div className="space-y-2">
@@ -192,8 +194,8 @@ export function TabSettingsDialog({
                           if (
                             confirm(
                               isMetricTabId(config.id)
-                                ? `「${meta.label}」を削除しますか?記録もすべて消えます。`
-                                : `「${meta.label}」をタブから外しますか?`
+                                ? t.tabs.removeConfirmMetric(meta.label)
+                                : t.tabs.removeConfirmBuiltin(meta.label)
                             )
                           ) {
                             removeItem(config)
@@ -232,11 +234,11 @@ export function TabSettingsDialog({
                   className="w-full gap-1 text-muted-foreground"
                 >
                   <Database className="h-4 w-4" />
-                  データの管理
+                  {t.tabs.dataManagement}
                 </Button>
               )}
               <p className="text-xs text-muted-foreground text-center">
-                表示中: {visibleCount} / {tabConfig.length}
+                {t.tabs.showing(visibleCount, tabConfig.length)}
               </p>
             </div>
           </>
@@ -331,7 +333,7 @@ export function TabSettingsDialog({
                               </p>
                               <p className="text-xs text-muted-foreground truncate">
                                 {preset.unit}
-                                {preset.target ? ` / 目標${preset.target}` : ''}
+                                {preset.target ? ` / ${t.tabs.targetPrefix}${preset.target}` : ''}
                               </p>
                             </div>
                           </button>
@@ -344,7 +346,7 @@ export function TabSettingsDialog({
 
               {availableBuiltins.length === 0 && availablePresets.length === 0 && (
                 <p className="text-center text-sm text-muted-foreground py-4">
-                  追加できる項目がありません
+                  {t.tabs.noItemsToAdd}
                 </p>
               )}
             </div>
