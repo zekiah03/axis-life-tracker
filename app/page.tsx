@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useLocalStorage } from '@/hooks/use-local-storage'
 import { IntroSlides } from '@/components/axis/intro-slides'
 import { OnboardingScreen } from '@/components/axis/onboarding-screen'
@@ -9,15 +9,15 @@ import { I18nContext, translations, type Locale } from '@/lib/i18n'
 import type { TabConfig, MetricDefinition } from '@/lib/types'
 import { BUILTIN_TAB_IDS, type BuiltinTabId } from '@/lib/types'
 
-// 3段階のゲート:
-// 1. IntroSlides (初回のみ: アプリの価値を伝える紹介)
-// 2. OnboardingScreen (記録する項目を選ぶ)
-// 3. AppMain (メインアプリ)
 export default function Page() {
   const [onboarded, setOnboarded] = useLocalStorage<boolean>('axis-onboarded', false)
   const [introSeen, setIntroSeen] = useLocalStorage<boolean>('axis-intro-seen', false)
   const [locale, setLocale] = useLocalStorage<Locale>('axis-locale', 'ja')
   const t = translations[locale]
+
+  // マウント完了まで何も表示しない (フラッシュ防止)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   const i18nValue = useMemo(
     () => ({ locale, t, setLocale }),
@@ -46,11 +46,14 @@ export default function Page() {
     setOnboarded(true)
   }
 
+  // マウント前は空画面 (フラッシュ防止)
+  if (!mounted) {
+    return <div className="h-[100dvh] bg-background" />
+  }
+
   // ステージ1: 紹介スライド (初回のみ)
   if (!introSeen && !onboarded) {
-    return (
-      <IntroSlides onComplete={() => setIntroSeen(true)} />
-    )
+    return <IntroSlides onComplete={() => setIntroSeen(true)} />
   }
 
   // ステージ2: オンボーディング (項目選択)
