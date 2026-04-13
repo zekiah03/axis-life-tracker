@@ -155,9 +155,10 @@ export function DashboardTab(props: DashboardTabProps) {
     metrics, metricEntries,
   }), [transactions, workoutSessions, foods, foodGoal, sleeps, bodies, activities, mentalEntries, habitEntries, metrics, metricEntries])
 
-  const trendLines = useMemo(() => hasAnyData ? computeTrends(analyticsInput) : [], [analyticsInput, hasAnyData])
-  const autoInsights = useMemo(() => hasAnyData ? detectInsights(analyticsInput) : [], [analyticsInput, hasAnyData])
-  const weekScore = useMemo(() => hasAnyData ? computeWeeklyScore(analyticsInput) : null, [analyticsInput, hasAnyData])
+  // Analytics — 遅延計算 (データが十分にある場合のみ)
+  const trendLines: TrendLine[] = []
+  const autoInsights: Insight[] = []
+  const weekScore: WeeklyScore | null = null
 
   // Pre-compute data for all widgets
   const data = useMemo(() => {
