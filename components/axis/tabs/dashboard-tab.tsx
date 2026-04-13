@@ -144,16 +144,20 @@ export function DashboardTab(props: DashboardTabProps) {
   const today = new Date().toISOString().split('T')[0]
   const thisMonth = new Date().toISOString().slice(0, 7)
 
-  // 分析データ
+  // 分析データ — 空配列チェックで不要な計算をスキップ
+  const hasAnyData = transactions.length > 0 || workoutSessions.length > 0 ||
+    foods.length > 0 || sleeps.length > 0 || bodies.length > 0 ||
+    activities.length > 0 || mentalEntries.length > 0 || metricEntries.length > 0
+
   const analyticsInput = useMemo(() => ({
     transactions, workoutSessions, foods, foodGoal,
     sleeps, bodies, activities, mentalEntries, habitEntries,
     metrics, metricEntries,
   }), [transactions, workoutSessions, foods, foodGoal, sleeps, bodies, activities, mentalEntries, habitEntries, metrics, metricEntries])
 
-  const trendLines = useMemo(() => computeTrends(analyticsInput), [analyticsInput])
-  const autoInsights = useMemo(() => detectInsights(analyticsInput), [analyticsInput])
-  const weekScore = useMemo(() => computeWeeklyScore(analyticsInput), [analyticsInput])
+  const trendLines = useMemo(() => hasAnyData ? computeTrends(analyticsInput) : [], [analyticsInput, hasAnyData])
+  const autoInsights = useMemo(() => hasAnyData ? detectInsights(analyticsInput) : [], [analyticsInput, hasAnyData])
+  const weekScore = useMemo(() => hasAnyData ? computeWeeklyScore(analyticsInput) : null, [analyticsInput, hasAnyData])
 
   // Pre-compute data for all widgets
   const data = useMemo(() => {

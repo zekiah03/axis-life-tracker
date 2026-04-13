@@ -1,25 +1,18 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 
 export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
-  // SSR では常に initialValue を使い、クライアントマウント後に localStorage から読む
-  const [storedValue, setStoredValue] = useState<T>(initialValue)
-  const initialized = useRef(false)
-
-  // クライアントマウント後に localStorage から初期値を読み込む (1回だけ)
-  useEffect(() => {
-    if (initialized.current) return
-    initialized.current = true
+  // 同期的に localStorage から読む。SSR時は initialValue にフォールバック。
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    if (typeof window === 'undefined') return initialValue
     try {
       const item = window.localStorage.getItem(key)
-      if (item !== null) {
-        setStoredValue(JSON.parse(item) as T)
-      }
+      return item !== null ? (JSON.parse(item) as T) : initialValue
     } catch {
-      // noop
+      return initialValue
     }
-  }, [key])
+  })
 
   const valueRef = useRef(storedValue)
   valueRef.current = storedValue

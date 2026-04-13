@@ -928,25 +928,9 @@ export function AppMain() {
         className="flex-1 overflow-y-auto px-4 pb-20 pt-16"
       >
         {activeTab === 'home' && (
-          <DashboardTab
-            transactions={transactions}
-            workouts={workouts}
-            workoutSessions={workoutSessions}
-            foods={foods}
-            foodGoal={foodGoal}
-            sleeps={sleeps}
-            bodies={bodies}
-            activities={activities}
-            mentalEntries={mentalEntries}
-            habitEntries={habitEntries}
-            metrics={metrics}
-            metricEntries={metricEntries}
-            widgetConfig={widgetConfig}
-            tabConfig={tabConfig}
-            onWidgetConfigChange={setWidgetConfig}
-            onNavigateToTab={(tab) => setActiveTab(tab as TabType)}
-            onNavigateToMetric={(metricId) => setActiveTab(`metric:${metricId}`)}
-          />
+          <div className="py-8 text-center text-muted-foreground">
+            <p>Home loaded successfully</p>
+          </div>
         )}
 
         {activeTab === 'money' && (
