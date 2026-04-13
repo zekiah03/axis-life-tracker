@@ -132,40 +132,35 @@ export default function AxisApp() {
   const [tabConfig, setTabConfig] = useLocalStorage<TabConfig[]>('axis-tab-config-v2', [])
   const [onboarded, setOnboarded] = useLocalStorage<boolean>('axis-onboarded', false)
 
-  // 家計簿カテゴリの初期投入 (初回のみ)
+  // === Migrations (オンボーディング完了後のみ実行, 初回マウントのみ) ===
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    const isOnboarded = window.localStorage.getItem('axis-onboarded') === 'true'
+    if (!isOnboarded) return
+    // 家計簿カテゴリの初期投入
     setMoneyCategories(prev => {
       if (prev.length > 0) return prev
       const now = Date.now()
-      return allDefaultCategories.map((c, i) => ({
-        ...c,
-        id: `cat-${now}-${i}`,
-      }))
+      return allDefaultCategories.map((c, i) => ({ ...c, id: `cat-${now}-${i}` }))
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // 既存取引に categoryId を後付け (名前マッチで補完, 初回のみ)
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const cats = JSON.parse(window.localStorage.getItem('axis-money-categories') || '[]') as MoneyCategory[]
-    if (cats.length === 0) return
-    const byName = new Map(cats.map((c: MoneyCategory) => [c.name, c.id]))
-    setTransactions(prev => {
-      let changed = false
-      const updated = prev.map(t => {
-        if (t.categoryId) return t
-        const id = byName.get(t.category)
-        if (id) { changed = true; return { ...t, categoryId: id } }
-        return t
-      })
-      return changed ? updated : prev
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // 既存メトリクスに healthSource / multiplier を後付けで補完 (初回のみ)
-  useEffect(() => {
+    // 既存取引に categoryId を後付け
+    if (typeof window !== 'undefined') {
+      const cats = JSON.parse(window.localStorage.getItem('axis-money-categories') || '[]') as MoneyCategory[]
+      if (cats.length > 0) {
+        const byName = new Map(cats.map((c: MoneyCategory) => [c.name, c.id]))
+        setTransactions(prev => {
+          let changed = false
+          const updated = prev.map(t => {
+            if (t.categoryId) return t
+            const id = byName.get(t.category)
+            if (id) { changed = true; return { ...t, categoryId: id } }
+            return t
+          })
+          return changed ? updated : prev
+        })
+      }
+    }
+    // 既存メトリクスに healthSource/multiplier を後付け
     setMetrics(prev => {
       let needsUpdate = false
       const updated = prev.map(m => {
@@ -173,16 +168,20 @@ export default function AxisApp() {
         if (!preset) return m
         const next = { ...m }
         if (next.healthSource === undefined && preset.healthSource) {
-          next.healthSource = preset.healthSource
-          needsUpdate = true
+          next.healthSource = preset.healthSource; needsUpdate = true
         }
         if (next.healthValueMultiplier === undefined && preset.healthValueMultiplier !== undefined) {
-          next.healthValueMultiplier = preset.healthValueMultiplier
-          needsUpdate = true
+          next.healthValueMultiplier = preset.healthValueMultiplier; needsUpdate = true
         }
         return next
       })
       return needsUpdate ? updated : prev
+    })
+    // 既存の睡眠エントリに source を後付け
+    setSleeps(prev => {
+      const needs = prev.some(s => (s as any).source === undefined)
+      if (!needs) return prev
+      return prev.map(s => ((s as any).source ? s : { ...s, source: 'manual' as const }))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -669,13 +668,11 @@ export default function AxisApp() {
     showToast('睡眠を記録しました', 'bg-sleep')
   }, [setSleeps, showToast])
 
-  // 既存の睡眠エントリに source を後付け (migration, 初回のみ)
+  // (sleep migration は上の統合migrationに移動済み)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // 以下は空のplaceholder
   useEffect(() => {
-    setSleeps(prev => {
-      const needs = prev.some(s => s.source === undefined)
-      if (!needs) return prev
-      return prev.map(s => (s.source ? s : { ...s, source: 'manual' as const }))
-    })
+    // noop — migration consolidated above
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -895,7 +892,7 @@ export default function AxisApp() {
     scrollRef.current?.scrollTo(0, 0)
   }, [activeTab, tabConfig])
 
-  // オンボーディング完了時: メトリクスとタブ設定を一括で保存
+  // オンボーディング完了時
   const handleOnboardingComplete = useCallback(
     (builtinConfig: TabConfig[], newMetricsData: Omit<MetricDefinition, 'id' | 'createdAt'>[]) => {
       const now = Date.now()
@@ -908,9 +905,18 @@ export default function AxisApp() {
         id: `metric:${m.id}`,
         visible: true,
       }))
-      setMetrics(prev => [...prev, ...createdMetrics])
-      setTabConfig([...builtinConfig, ...metricTabs])
-      setOnboarded(true)
+      // localStorage に直接書き込み + React state も更新
+      if (typeof window !== 'undefined') {
+        const allMetrics = [...(JSON.parse(window.localStorage.getItem('axis-metrics') || '[]')), ...createdMetrics]
+        const allTabConfig = [...builtinConfig, ...metricTabs]
+        window.localStorage.setItem('axis-metrics', JSON.stringify(allMetrics))
+        window.localStorage.setItem('axis-tab-config-v2', JSON.stringify(allTabConfig))
+        window.localStorage.setItem('axis-onboarded', 'true')
+        // React state も同期
+        setMetrics(allMetrics)
+        setTabConfig(allTabConfig)
+        setOnboarded(true)
+      }
     },
     [setMetrics, setTabConfig, setOnboarded]
   )
