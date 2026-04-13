@@ -39,6 +39,8 @@ import type {
   MentalEntry,
   HabitEntry,
   HabitGoal,
+  SleepGoal,
+  BodyGoal,
   FoodEntry,
   FoodGoal,
   CustomFoodItem,
@@ -110,6 +112,8 @@ export default function AxisApp() {
   const [mentalEntries, setMentalEntries] = useLocalStorage<MentalEntry[]>('axis-mental', [])
   const [habitEntries, setHabitEntries] = useLocalStorage<HabitEntry[]>('axis-habits', [])
   const [habitGoals, setHabitGoals] = useLocalStorage<HabitGoal[]>('axis-habit-goals', [])
+  const [sleepGoal, setSleepGoal] = useLocalStorage<SleepGoal>('axis-sleep-goal', { targetHours: 7.5 })
+  const [bodyGoal, setBodyGoal] = useLocalStorage<BodyGoal>('axis-body-goal', {})
   const [foods, setFoods] = useLocalStorage<FoodEntry[]>('axis-foods', [])
   const [foodGoal, setFoodGoal] = useLocalStorage<FoodGoal>('axis-food-goal', {
     calories: 2200,
@@ -1028,8 +1032,10 @@ export default function AxisApp() {
         {activeTab === 'sleep' && (
           <SleepTab
             sleeps={sleeps}
+            sleepGoal={sleepGoal}
             onAddSleep={handleAddSleep}
             onDeleteSleep={handleDeleteSleep}
+            onSaveSleepGoal={setSleepGoal}
             onSyncFromHealth={handleSyncSleepFromHealth}
           />
         )}
@@ -1037,8 +1043,10 @@ export default function AxisApp() {
         {activeTab === 'body' && (
           <BodyTab
             bodies={bodies}
+            bodyGoal={bodyGoal}
             onAddBody={handleAddBody}
             onDeleteBody={handleDeleteBody}
+            onSaveBodyGoal={setBodyGoal}
             onSyncFromHealth={handleSyncBodyFromHealth}
           />
         )}

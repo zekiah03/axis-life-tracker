@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import type { BodyEntry } from '@/lib/types'
+import type { BodyEntry, BodyGoal } from '@/lib/types'
 import {
   getAvailability,
   requestAccess,
@@ -17,12 +17,14 @@ import { cn } from '@/lib/utils'
 
 interface BodyTabProps {
   bodies: BodyEntry[]
+  bodyGoal: BodyGoal
   onAddBody: (body: Omit<BodyEntry, 'id' | 'createdAt'>) => void
   onDeleteBody: (id: string) => void
+  onSaveBodyGoal: (goal: BodyGoal) => void
   onSyncFromHealth?: () => Promise<number>
 }
 
-export function BodyTab({ bodies, onAddBody, onDeleteBody, onSyncFromHealth }: BodyTabProps) {
+export function BodyTab({ bodies, bodyGoal, onAddBody, onDeleteBody, onSaveBodyGoal, onSyncFromHealth }: BodyTabProps) {
   const [weight, setWeight] = useState('')
   const [bodyFat, setBodyFat] = useState('')
   const [muscleMass, setMuscleMass] = useState('')
@@ -130,16 +132,80 @@ export function BodyTab({ bodies, onAddBody, onDeleteBody, onSyncFromHealth }: B
                 </div>
               )}
             </div>
-            {(trend.latest.bodyFat !== undefined || trend.latest.muscleMass !== undefined) && (
-              <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
-                {trend.latest.bodyFat !== undefined && (
-                  <span>体脂肪率: {trend.latest.bodyFat.toFixed(1)}%</span>
-                )}
-                {trend.latest.muscleMass !== undefined && (
-                  <span>筋肉量: {trend.latest.muscleMass.toFixed(1)}kg</span>
-                )}
-              </div>
-            )}
+            {/* 詳細指標 */}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {trend.latest.bodyFat !== undefined && (
+                <div className="rounded-md bg-secondary/60 p-2">
+                  <p className="text-[10px] text-muted-foreground">体脂肪率</p>
+                  <p className="text-sm font-bold text-foreground">{trend.latest.bodyFat.toFixed(1)}%</p>
+                </div>
+              )}
+              {bodyGoal.height && (
+                <div className="rounded-md bg-secondary/60 p-2">
+                  <p className="text-[10px] text-muted-foreground">BMI</p>
+                  <p className={cn('text-sm font-bold', (() => {
+                    const bmi = trend.latest.weight / ((bodyGoal.height / 100) ** 2)
+                    return bmi < 18.5 ? 'text-sleep' : bmi < 25 ? 'text-money' : 'text-destructive'
+                  })())}>
+                    {(trend.latest.weight / ((bodyGoal.height / 100) ** 2)).toFixed(1)}
+                  </p>
+                </div>
+              )}
+              {trend.latest.bodyFat !== undefined && (
+                <div className="rounded-md bg-secondary/60 p-2">
+                  <p className="text-[10px] text-muted-foreground">除脂肪体重</p>
+                  <p className="text-sm font-bold text-foreground">
+                    {(trend.latest.weight * (1 - trend.latest.bodyFat / 100)).toFixed(1)} kg
+                  </p>
+                </div>
+              )}
+              {bodyGoal.targetWeight && (
+                <div className="rounded-md bg-secondary/60 p-2">
+                  <p className="text-[10px] text-muted-foreground">目標まで</p>
+                  <p className={cn('text-sm font-bold',
+                    Math.abs(trend.latest.weight - bodyGoal.targetWeight) < 1 ? 'text-money' : 'text-foreground'
+                  )}>
+                    {trend.latest.weight > bodyGoal.targetWeight ? '-' : '+'}
+                    {Math.abs(trend.latest.weight - bodyGoal.targetWeight).toFixed(1)} kg
+                  </p>
+                  <p className="text-[9px] text-muted-foreground">目標 {bodyGoal.targetWeight}kg</p>
+                </div>
+              )}
+            </div>
+
+            {/* 目標設定リンク */}
+            <div className="mt-2 flex gap-2 text-[10px]">
+              {!bodyGoal.height && (
+                <button
+                  type="button"
+                  className="text-body underline"
+                  onClick={() => {
+                    const input = prompt('身長を入力 (cm)', '')
+                    if (input) {
+                      const h = parseFloat(input)
+                      if (h > 0) onSaveBodyGoal({ ...bodyGoal, height: h })
+                    }
+                  }}
+                >
+                  身長を設定(BMI計算)
+                </button>
+              )}
+              {!bodyGoal.targetWeight && (
+                <button
+                  type="button"
+                  className="text-body underline"
+                  onClick={() => {
+                    const input = prompt('目標体重 (kg)', '')
+                    if (input) {
+                      const w = parseFloat(input)
+                      if (w > 0) onSaveBodyGoal({ ...bodyGoal, targetWeight: w })
+                    }
+                  }}
+                >
+                  目標体重を設定
+                </button>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

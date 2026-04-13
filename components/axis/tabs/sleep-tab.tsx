@@ -14,12 +14,15 @@ import {
   type NativeHealthAvailability,
 } from '@/lib/native-health'
 import { scoreLabel } from '@/lib/sleep-score'
+import type { SleepGoal } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface SleepTabProps {
   sleeps: SleepEntry[]
+  sleepGoal: SleepGoal
   onAddSleep: (sleep: Omit<SleepEntry, 'id' | 'createdAt'>) => void
   onDeleteSleep: (id: string) => void
+  onSaveSleepGoal: (goal: SleepGoal) => void
   onSyncFromHealth?: () => Promise<number>
 }
 
@@ -69,8 +72,10 @@ function StageBar({ sleep }: { sleep: SleepEntry }) {
 
 export function SleepTab({
   sleeps,
+  sleepGoal,
   onAddSleep,
   onDeleteSleep,
+  onSaveSleepGoal,
   onSyncFromHealth,
 }: SleepTabProps) {
   const [bedtime, setBedtime] = useState('23:00')
@@ -131,7 +136,7 @@ export function SleepTab({
 
   const sortedSleeps = [...sleeps].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
 
-  // 直近7日平均
+  // 直近7日平均 + 睡眠負債 + 規則性
   const last7Avg = useMemo(() => {
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
@@ -146,8 +151,29 @@ export function SleepTab({
       manualQualities.length > 0
         ? manualQualities.reduce((s, v) => s + v, 0) / manualQualities.length
         : null
-    return { avgMin, avgScore, avgManual, count: recent.length }
-  }, [sleeps])
+
+    // 睡眠負債 (目標時間 - 実際の時間の累積差分)
+    const targetMin = sleepGoal.targetHours * 60
+    const debtMin = recent.reduce((debt, s) => debt + (targetMin - s.duration), 0)
+
+    // 就寝時刻の規則性 (標準偏差、分)
+    const bedtimeMinutes = recent
+      .filter(s => s.bedtime)
+      .map(s => {
+        const [h, m] = s.bedtime.split(':').map(Number)
+        let mins = h * 60 + m
+        if (mins < 720) mins += 1440 // 午後12時前は翌日扱い
+        return mins
+      })
+    let bedtimeStdDev: number | null = null
+    if (bedtimeMinutes.length >= 3) {
+      const mean = bedtimeMinutes.reduce((s, v) => s + v, 0) / bedtimeMinutes.length
+      const variance = bedtimeMinutes.reduce((s, v) => s + (v - mean) ** 2, 0) / bedtimeMinutes.length
+      bedtimeStdDev = Math.sqrt(variance)
+    }
+
+    return { avgMin, avgScore, avgManual, count: recent.length, debtMin, bedtimeStdDev }
+  }, [sleeps, sleepGoal.targetHours])
 
   return (
     <div className="space-y-4">
@@ -171,6 +197,53 @@ export function SleepTab({
                   <p>質: {last7Avg.avgManual.toFixed(1)} / 5</p>
                 )}
                 <p>({last7Avg.count}日)</p>
+              </div>
+            </div>
+
+            {/* 睡眠負債 + 規則性 */}
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <div className="rounded-md bg-secondary/60 p-2">
+                <p className="text-[10px] text-muted-foreground">睡眠負債 (7日)</p>
+                <p className={cn(
+                  'text-sm font-bold',
+                  last7Avg.debtMin > 0 ? 'text-destructive' : 'text-money'
+                )}>
+                  {last7Avg.debtMin > 0 ? '+' : ''}{formatDuration(Math.abs(Math.round(last7Avg.debtMin)))}
+                </p>
+                <p className="text-[9px] text-muted-foreground">
+                  目標 {sleepGoal.targetHours}h
+                  <button
+                    type="button"
+                    className="ml-1 text-sleep underline"
+                    onClick={() => {
+                      const input = prompt('目標睡眠時間（時間）', String(sleepGoal.targetHours))
+                      if (input) {
+                        const h = parseFloat(input)
+                        if (h > 0 && h <= 24) onSaveSleepGoal({ targetHours: h })
+                      }
+                    }}
+                  >
+                    変更
+                  </button>
+                </p>
+              </div>
+              <div className="rounded-md bg-secondary/60 p-2">
+                <p className="text-[10px] text-muted-foreground">就寝の規則性</p>
+                {last7Avg.bedtimeStdDev !== null ? (
+                  <>
+                    <p className={cn(
+                      'text-sm font-bold',
+                      last7Avg.bedtimeStdDev < 30 ? 'text-money' : last7Avg.bedtimeStdDev < 60 ? 'text-foreground' : 'text-destructive'
+                    )}>
+                      {last7Avg.bedtimeStdDev < 30 ? '安定' : last7Avg.bedtimeStdDev < 60 ? 'やや不規則' : '不規則'}
+                    </p>
+                    <p className="text-[9px] text-muted-foreground">
+                      ばらつき {Math.round(last7Avg.bedtimeStdDev)}分
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">データ不足</p>
+                )}
               </div>
             </div>
           </CardContent>

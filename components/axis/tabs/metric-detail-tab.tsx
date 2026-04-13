@@ -74,20 +74,50 @@ export function MetricDetailTab({
       ? Math.min(100, (todayValue / metric.target) * 100)
       : null
 
-  // 直近7日の平均
-  const last7Avg = useMemo(() => {
+  // 直近7日の平均 + ミニトレンド + ストリーク
+  const weeklyData = useMemo(() => {
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     const recent = entries.filter(e => new Date(e.date) >= sevenDaysAgo)
     if (recent.length === 0) return null
-    // 日次集計を取ってから平均
     const byDate = new Map<string, MetricEntry[]>()
     for (const e of recent) {
       byDate.set(e.date, [...(byDate.get(e.date) || []), e])
     }
-    const dailyValues = Array.from(byDate.values()).map(es => aggregate(metric, es))
-    return dailyValues.reduce((s, v) => s + v, 0) / dailyValues.length
+    const dailyValues = Array.from(byDate.entries())
+      .map(([date, es]) => ({ date, value: aggregate(metric, es) }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+
+    const avg = dailyValues.reduce((s, v) => s + v.value, 0) / dailyValues.length
+
+    // 7日分のバー用 (空の日も含む)
+    const bars: { date: string; value: number }[] = []
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      const dateStr = d.toISOString().split('T')[0]
+      const found = dailyValues.find(v => v.date === dateStr)
+      bars.push({ date: dateStr, value: found?.value ?? 0 })
+    }
+
+    // ストリーク
+    let streak = 0
+    const checkDate = new Date()
+    while (true) {
+      const dateStr = checkDate.toISOString().split('T')[0]
+      if (byDate.has(dateStr) || entries.some(e => e.date === dateStr)) {
+        streak++
+        checkDate.setDate(checkDate.getDate() - 1)
+      } else {
+        if (streak === 0) { checkDate.setDate(checkDate.getDate() - 1); continue }
+        break
+      }
+      if (streak > 365) break
+    }
+
+    return { avg, bars, streak, days: byDate.size }
   }, [entries, metric])
+  const last7Avg = weeklyData?.avg ?? null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -171,10 +201,39 @@ export function MetricDetailTab({
               />
             </div>
           )}
-          {last7Avg !== null && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              直近7日平均: {formatValue(last7Avg, metric.step)} {metric.unit}
-            </p>
+          {weeklyData && (
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>直近7日平均: <span className="font-semibold text-foreground">{formatValue(weeklyData.avg, metric.step)} {metric.unit}</span></span>
+                {weeklyData.streak > 0 && (
+                  <span className="flex items-center gap-1" style={{ color: metric.color }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+                    {weeklyData.streak}日連続
+                  </span>
+                )}
+              </div>
+              {/* ミニ7日バー */}
+              <div className="flex items-end gap-0.5 h-8">
+                {weeklyData.bars.map((bar, i) => {
+                  const maxVal = Math.max(...weeklyData.bars.map(b => b.value), 1)
+                  const pct = (bar.value / maxVal) * 100
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                      <div
+                        className="w-full rounded-sm min-h-[2px]"
+                        style={{
+                          height: `${Math.max(4, pct)}%`,
+                          backgroundColor: bar.value > 0 ? metric.color : 'var(--color-secondary)',
+                        }}
+                      />
+                      <span className="text-[7px] text-muted-foreground">
+                        {['日','月','火','水','木','金','土'][new Date(bar.date).getDay()]}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

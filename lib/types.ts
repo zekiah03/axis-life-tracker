@@ -174,8 +174,17 @@ export interface BodyEntry {
   bodyFat?: number // %
   muscleMass?: number // kg
   memo: string
-  source?: 'manual' | 'health' // health = ヘルスケアから同期
+  source?: 'manual' | 'health'
   createdAt: number
+}
+
+export interface BodyGoal {
+  targetWeight?: number // kg
+  height?: number // cm (BMI計算用)
+}
+
+export interface SleepGoal {
+  targetHours: number // 目標睡眠時間 (時間)
 }
 
 // 汎用メトリクス(数値ログ)
