@@ -73,7 +73,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   }
 
   return (
-    <div className="flex min-h-[100dvh] max-w-[480px] mx-auto flex-col bg-background">
+    <div className="flex h-[100dvh] max-w-[480px] mx-auto flex-col bg-background overflow-hidden">
       {/* ヘッダー */}
       <div className="px-6 pt-12 pb-6 shrink-0">
         <div className="flex items-center gap-2 mb-2">
