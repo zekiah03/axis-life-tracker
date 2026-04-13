@@ -2,17 +2,17 @@
   <!-- Background -->
   <rect width="512" height="512" rx="108" fill="#0a0a0f"/>
 
-  <!-- Top: bold pulse wave -->
+  <!-- Pulse wave (centered vertically and horizontally) -->
   <path
-    d="M 56 160 L 126 160 L 166 160 L 198 72 L 256 248 L 314 72 L 346 160 L 386 160 L 456 160"
+    d="M 56 176 L 150 176 L 190 176 L 220 76 L 256 276 L 292 76 L 322 176 L 362 176 L 456 176"
     stroke="#ffffff"
     stroke-width="36"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
 
-  <!-- Bottom: three data bars — all full white -->
+  <!-- Three data bars (centered horizontally, spaced evenly below) -->
   <line x1="56" y1="310" x2="456" y2="310" stroke="#ffffff" stroke-width="34" stroke-linecap="round"/>
-  <line x1="56" y1="378" x2="340" y2="378" stroke="#ffffff" stroke-width="34" stroke-linecap="round"/>
-  <line x1="56" y1="446" x2="220" y2="446" stroke="#ffffff" stroke-width="34" stroke-linecap="round"/>
+  <line x1="116" y1="378" x2="396" y2="378" stroke="#ffffff" stroke-width="34" stroke-linecap="round"/>
+  <line x1="176" y1="446" x2="336" y2="446" stroke="#ffffff" stroke-width="34" stroke-linecap="round"/>
 </svg>
