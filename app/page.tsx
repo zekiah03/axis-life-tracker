@@ -966,6 +966,7 @@ export default function AxisApp() {
             bodies={bodies}
             activities={activities}
             mentalEntries={mentalEntries}
+            habitEntries={habitEntries}
             metrics={metrics}
             metricEntries={metricEntries}
             widgetConfig={widgetConfig}

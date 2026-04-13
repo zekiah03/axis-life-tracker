@@ -36,6 +36,7 @@ import type {
   BodyEntry,
   ActivityEntry,
   MentalEntry,
+  HabitEntry,
   MetricDefinition,
   MetricEntry,
 } from '@/lib/types'
@@ -44,6 +45,14 @@ import { isMetricTabId } from '@/lib/types'
 import type { WidgetConfig, WidgetId } from '@/lib/widgets'
 import { sessionVolume, sessionSetCount, weeklyVolume } from '@/lib/workout-stats'
 import { scoreLabel } from '@/lib/sleep-score'
+import {
+  computeTrends,
+  detectInsights,
+  computeWeeklyScore,
+  type TrendLine,
+  type Insight,
+  type WeeklyScore,
+} from '@/lib/analytics'
 import { WidgetEditDialog } from '@/components/axis/widget-edit-dialog'
 import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -58,6 +67,7 @@ interface DashboardTabProps {
   bodies: BodyEntry[]
   activities: ActivityEntry[]
   mentalEntries: MentalEntry[]
+  habitEntries: HabitEntry[]
   metrics: MetricDefinition[]
   metricEntries: MetricEntry[]
   widgetConfig: WidgetConfig[]
@@ -98,7 +108,7 @@ function formatDuration(minutes: number): string {
 export function DashboardTab(props: DashboardTabProps) {
   const {
     transactions, workouts, workoutSessions, foods, foodGoal,
-    sleeps, bodies, activities, mentalEntries, metrics, metricEntries,
+    sleeps, bodies, activities, mentalEntries, habitEntries, metrics, metricEntries,
     widgetConfig, tabConfig, onWidgetConfigChange,
     onNavigateToTab, onNavigateToMetric,
   } = props
@@ -133,6 +143,17 @@ export function DashboardTab(props: DashboardTabProps) {
 
   const today = new Date().toISOString().split('T')[0]
   const thisMonth = new Date().toISOString().slice(0, 7)
+
+  // 分析データ
+  const analyticsInput = useMemo(() => ({
+    transactions, workoutSessions, foods, foodGoal,
+    sleeps, bodies, activities, mentalEntries, habitEntries,
+    metrics, metricEntries,
+  }), [transactions, workoutSessions, foods, foodGoal, sleeps, bodies, activities, mentalEntries, habitEntries, metrics, metricEntries])
+
+  const trendLines = useMemo(() => computeTrends(analyticsInput), [analyticsInput])
+  const autoInsights = useMemo(() => detectInsights(analyticsInput), [analyticsInput])
+  const weekScore = useMemo(() => computeWeeklyScore(analyticsInput), [analyticsInput])
 
   // Pre-compute data for all widgets
   const data = useMemo(() => {
@@ -231,6 +252,147 @@ export function DashboardTab(props: DashboardTabProps) {
   // Render a widget by ID
   const renderWidget = (id: WidgetId) => {
     switch (id) {
+      // --- 分析ウィジェット ---
+      case 'weekly-score': {
+        if (!weekScore) return null
+        return (
+          <Card key={id} className="bg-card border-border">
+            <CardContent className="p-4">
+              <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+                {locale === 'en' ? 'Weekly Score' : '今週のスコア'}
+              </h3>
+              <div className="flex items-center gap-4">
+                {/* 円形スコア */}
+                <div className="relative shrink-0" style={{ width: 80, height: 80 }}>
+                  <svg width={80} height={80} className="-rotate-90">
+                    <circle cx={40} cy={40} r={32} stroke="var(--color-secondary)" strokeWidth={8} fill="none" />
+                    <circle
+                      cx={40} cy={40} r={32}
+                      stroke={weekScore.overall >= 70 ? '#22d3a0' : weekScore.overall >= 40 ? '#facc15' : '#ef4444'}
+                      strokeWidth={8} fill="none"
+                      strokeDasharray={2 * Math.PI * 32}
+                      strokeDashoffset={2 * Math.PI * 32 * (1 - weekScore.overall / 100)}
+                      strokeLinecap="round"
+                      className="transition-all duration-500"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xl font-bold text-foreground">{weekScore.overall}</span>
+                  </div>
+                </div>
+                {/* カテゴリ別 */}
+                <div className="flex-1 space-y-1.5">
+                  {weekScore.categories.map((cat) => (
+                    <div key={cat.label} className="space-y-0.5">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-muted-foreground">{cat.label}</span>
+                        <span className="font-semibold text-foreground">{cat.score}</span>
+                      </div>
+                      <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${cat.score}%`, backgroundColor: cat.color }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      }
+
+      case 'trends': {
+        if (trendLines.length === 0) return null
+        return (
+          <Card key={id} className="bg-card border-border">
+            <CardContent className="p-4">
+              <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+                {locale === 'en' ? '2-Week Trends' : '2週間の変化'}
+              </h3>
+              <div className="space-y-3">
+                {trendLines.map((line) => {
+                  const maxVal = Math.max(...line.points.map(p => p.value), 1)
+                  return (
+                    <div key={line.label} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">{line.label}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-foreground">
+                            {line.current} {line.unit}
+                          </span>
+                          {line.direction !== 'stable' && (
+                            <span className={cn(
+                              'text-[10px] font-medium',
+                              line.direction === 'up' ? 'text-money' : 'text-destructive'
+                            )}>
+                              {line.changePercent > 0 ? '+' : ''}{line.changePercent.toFixed(0)}%
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {/* ミニスパークライン (14日) */}
+                      <div className="flex items-end gap-px h-6">
+                        {line.points.map((p, i) => (
+                          <div
+                            key={i}
+                            className="flex-1 rounded-sm min-h-[1px]"
+                            style={{
+                              height: `${Math.max(4, (p.value / maxVal) * 100)}%`,
+                              backgroundColor: p.value > 0 ? line.color : 'var(--color-secondary)',
+                              opacity: i < 7 ? 0.4 : 1,
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex justify-between text-[8px] text-muted-foreground">
+                        <span>{locale === 'en' ? '2w ago' : '2週間前'}</span>
+                        <span>{locale === 'en' ? 'Today' : '今日'}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      }
+
+      case 'insights': {
+        if (autoInsights.length === 0) return null
+        const iconMap: Record<string, { icon: string; color: string }> = {
+          positive: { icon: 'TrendingUp', color: '#22d3a0' },
+          warning: { icon: 'AlertTriangle', color: '#facc15' },
+          neutral: { icon: 'Minus', color: '#71717a' },
+          achievement: { icon: 'Trophy', color: '#f97316' },
+        }
+        return (
+          <Card key={id} className="bg-card border-border">
+            <CardContent className="p-4">
+              <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+                {locale === 'en' ? 'Insights' : '気づき'}
+              </h3>
+              <div className="space-y-2">
+                {autoInsights.slice(0, 5).map((insight, i) => {
+                  const iconInfo = iconMap[insight.type]
+                  const InsightIcon = getIcon(iconInfo.icon)
+                  return (
+                    <div key={i} className="flex items-start gap-2 rounded-md bg-secondary/40 p-2">
+                      <InsightIcon className="h-4 w-4 shrink-0 mt-0.5" style={{ color: iconInfo.color }} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-foreground">{insight.title}</p>
+                        <p className="text-[10px] text-muted-foreground">{insight.description}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      }
+
       case 'money-summary':
         return (
           <Card key={id} className="bg-card border-border">

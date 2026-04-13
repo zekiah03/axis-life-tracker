@@ -2,6 +2,9 @@
 // 各ウィジェットは ID で識別し、表示/非表示と並び順をユーザーが設定できる。
 
 export type WidgetId =
+  | 'weekly-score'        // 総合週次スコア
+  | 'trends'              // 変化トレンド
+  | 'insights'            // 自動検出インサイト
   | 'money-summary'       // 今月の収支
   | 'food-calories'       // 今日のカロリー
   | 'food-pfc'            // 今日のPFCバランス
@@ -30,6 +33,9 @@ export interface WidgetMeta {
 }
 
 export const WIDGET_META: WidgetMeta[] = [
+  { id: 'weekly-score', label: '今週のスコア', labelEn: 'Weekly Score', icon: 'Gauge', color: '#22d3a0' },
+  { id: 'trends', label: '変化トレンド', labelEn: 'Trends', icon: 'TrendingUp', color: '#60a5fa' },
+  { id: 'insights', label: '気づき', labelEn: 'Insights', icon: 'Lightbulb', color: '#facc15' },
   { id: 'money-summary', label: '今月の収支', labelEn: 'Monthly Balance', icon: 'Wallet', color: '#22d3a0' },
   { id: 'food-calories', label: '今日のカロリー', labelEn: "Today's Calories", icon: 'Utensils', color: '#a78bfa' },
   { id: 'food-pfc', label: 'PFCバランス', labelEn: 'PFC Balance', icon: 'PieChart', color: '#a78bfa' },
@@ -46,6 +52,9 @@ export const WIDGET_META: WidgetMeta[] = [
 ]
 
 export const DEFAULT_WIDGET_CONFIG: WidgetConfig[] = [
+  { id: 'weekly-score', visible: true },
+  { id: 'trends', visible: true },
+  { id: 'insights', visible: true },
   { id: 'money-summary', visible: true },
   { id: 'food-calories', visible: true },
   { id: 'workout-summary', visible: true },
