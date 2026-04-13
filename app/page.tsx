@@ -1051,16 +1051,6 @@ export default function AxisApp() {
           />
         )}
 
-        {activeTab === 'habits' && (
-          <HabitsTab
-            entries={habitEntries}
-            goals={habitGoals}
-            onAdd={handleAddHabit}
-            onDelete={handleDeleteHabit}
-            onSaveGoals={handleSaveHabitGoals}
-          />
-        )}
-
         {activeTab === 'study' && (
           <HabitsTab
             entries={habitEntries.filter(e => e.habitType === 'study')}

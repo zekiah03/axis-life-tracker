@@ -89,14 +89,6 @@ export const BUILTIN_META: Record<BuiltinTabId, BuiltinMeta> = {
     colorClass: 'text-food',
     indicatorClass: 'bg-food',
   },
-  habits: {
-    id: 'habits',
-    label: '習慣',
-    description: '勉強・読書・瞑想(まとめ)',
-    icon: BookOpen,
-    colorClass: 'text-money',
-    indicatorClass: 'bg-money',
-  },
   study: {
     id: 'study',
     label: '勉強',

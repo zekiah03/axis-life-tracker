@@ -14,7 +14,8 @@ import { Switch } from '@/components/ui/switch'
 import type { BuiltinTabId, MetricDefinition, TabConfig } from '@/lib/types'
 import { isMetricTabId, getMetricIdFromTabId } from '@/lib/types'
 import { BUILTIN_META, getIconComponent } from '@/lib/tab-items'
-import { metricPresets, metricCategories, type MetricPreset } from '@/lib/metric-presets'
+import { metricPresets, type MetricPreset } from '@/lib/metric-presets'
+import { TAB_CATEGORIES, METRIC_CATEGORIES } from '@/lib/tab-categories'
 import { cn } from '@/lib/utils'
 
 interface TabSettingsDialogProps {
@@ -257,47 +258,56 @@ export function TabSettingsDialog({
             </DialogHeader>
 
             <div className="space-y-4">
-              {/* 組み込みカテゴリ */}
-              {availableBuiltins.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-xs font-medium text-muted-foreground">カテゴリ</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {availableBuiltins.map((id) => {
-                      const bm = BUILTIN_META[id]
-                      const Icon = bm.icon
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => {
-                            onAddBuiltin(id)
-                            setView('list')
-                          }}
-                          className="flex items-start gap-2 rounded-lg border border-border bg-secondary/40 p-3 text-left hover:bg-secondary transition-colors"
-                        >
-                          <Icon className={cn('h-5 w-5 shrink-0 mt-0.5', bm.colorClass)} />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">
-                              {bm.label}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {bm.description}
-                            </p>
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* 数値プリセット */}
-              {metricCategories.map((cat) => {
-                const items = availablePresets.filter(p => p.category === cat)
+              {/* 組み込みタブ（カテゴリ別） */}
+              {TAB_CATEGORIES.map((cat) => {
+                const items = cat.builtinIds.filter(id => availableBuiltins.includes(id))
                 if (items.length === 0) return null
                 return (
-                  <div key={cat} className="space-y-2">
-                    <h3 className="text-xs font-medium text-muted-foreground">{cat}</h3>
+                  <div key={cat.id} className="space-y-2">
+                    <h3 className="text-xs font-medium text-muted-foreground">{cat.label}</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {items.map((id) => {
+                        const bm = BUILTIN_META[id]
+                        if (!bm) return null
+                        const Icon = bm.icon
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => {
+                              onAddBuiltin(id)
+                              setView('list')
+                            }}
+                            className="flex items-start gap-2 rounded-lg border border-border bg-secondary/40 p-3 text-left hover:bg-secondary transition-colors"
+                          >
+                            <Icon className={cn('h-5 w-5 shrink-0 mt-0.5', bm.colorClass)} />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">
+                                {bm.label}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {bm.description}
+                              </p>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* 数値プリセット（バイタル・嗜好品） */}
+              {METRIC_CATEGORIES.map((cat) => {
+                const items = availablePresets.filter(p => {
+                  if (cat.id === 'vitals') return p.category === '健康'
+                  if (cat.id === 'substances') return p.category === '嗜好品'
+                  return false
+                })
+                if (items.length === 0) return null
+                return (
+                  <div key={cat.id} className="space-y-2">
+                    <h3 className="text-xs font-medium text-muted-foreground">{cat.label}</h3>
                     <div className="grid grid-cols-2 gap-2">
                       {items.map((preset) => {
                         const Icon = getIconComponent(preset.icon)

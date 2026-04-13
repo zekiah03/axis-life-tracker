@@ -4,9 +4,9 @@ import { useState } from 'react'
 import { Check, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { BuiltinTabId, MetricDefinition, TabConfig } from '@/lib/types'
-import { BUILTIN_TAB_IDS } from '@/lib/types'
-import { metricPresets, metricCategories, type MetricPreset } from '@/lib/metric-presets'
+import { metricPresets, type MetricPreset } from '@/lib/metric-presets'
 import { BUILTIN_META, getIconComponent } from '@/lib/tab-items'
+import { TAB_CATEGORIES, METRIC_CATEGORIES } from '@/lib/tab-categories'
 import { cn } from '@/lib/utils'
 
 interface OnboardingScreenProps {
@@ -88,47 +88,52 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
       {/* スクロール可能なコンテンツ */}
       <div className="flex-1 overflow-y-auto px-4 space-y-6">
-        {/* カテゴリ */}
-        <section className="space-y-2">
-          <h2 className="text-xs font-medium text-muted-foreground px-2">
-            カテゴリ（高機能）
-          </h2>
-          <div className="grid grid-cols-2 gap-2">
-            {BUILTIN_TAB_IDS.map((id) => {
-              const meta = BUILTIN_META[id]
-              const Icon = meta.icon
-              const selected = selectedBuiltins.has(id)
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => toggleBuiltin(id)}
-                  className={cn(
-                    'relative flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors',
-                    selected
-                      ? 'border-foreground bg-foreground/5'
-                      : 'border-border bg-secondary/40 hover:bg-secondary/60'
-                  )}
-                >
-                  <div className="flex w-full items-center justify-between">
-                    <Icon className={cn('h-5 w-5', meta.colorClass)} />
-                    {selected && <Check className="h-4 w-4 text-foreground" />}
-                  </div>
-                  <span className="text-sm font-medium text-foreground">{meta.label}</span>
-                  <span className="text-xs text-muted-foreground">{meta.description}</span>
-                </button>
-              )
-            })}
-          </div>
-        </section>
+        {/* 組み込みタブ（カテゴリ別） */}
+        {TAB_CATEGORIES.map((cat) => (
+          <section key={cat.id} className="space-y-2">
+            <h2 className="text-xs font-medium text-muted-foreground px-2">{cat.label}</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {cat.builtinIds.map((id) => {
+                const meta = BUILTIN_META[id]
+                if (!meta) return null
+                const Icon = meta.icon
+                const selected = selectedBuiltins.has(id)
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => toggleBuiltin(id)}
+                    className={cn(
+                      'relative flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors',
+                      selected
+                        ? 'border-foreground bg-foreground/5'
+                        : 'border-border bg-secondary/40 hover:bg-secondary/60'
+                    )}
+                  >
+                    <div className="flex w-full items-center justify-between">
+                      <Icon className={cn('h-5 w-5', meta.colorClass)} />
+                      {selected && <Check className="h-4 w-4 text-foreground" />}
+                    </div>
+                    <span className="text-sm font-medium text-foreground">{meta.label}</span>
+                    <span className="text-xs text-muted-foreground">{meta.description}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        ))}
 
-        {/* 数値ログ（カテゴリごと） */}
-        {metricCategories.map((cat) => {
-          const items = metricPresets.filter(p => p.category === cat)
+        {/* 数値メトリクス（バイタル・嗜好品） */}
+        {METRIC_CATEGORIES.map((cat) => {
+          const items = metricPresets.filter(p => {
+            if (cat.id === 'vitals') return p.category === '健康'
+            if (cat.id === 'substances') return p.category === '嗜好品'
+            return false
+          })
           if (items.length === 0) return null
           return (
-            <section key={cat} className="space-y-2">
-              <h2 className="text-xs font-medium text-muted-foreground px-2">{cat}</h2>
+            <section key={cat.id} className="space-y-2">
+              <h2 className="text-xs font-medium text-muted-foreground px-2">{cat.label}</h2>
               <div className="grid grid-cols-2 gap-2">
                 {items.map((preset) => {
                   const Icon = getIconComponent(preset.icon)

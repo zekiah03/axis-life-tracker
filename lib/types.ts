@@ -292,13 +292,13 @@ export interface HabitGoal {
 }
 
 // 「組み込み」カテゴリ: 固有のデータモデルと専用タブUIを持つ
-export type BuiltinTabId = 'money' | 'workout' | 'food' | 'sleep' | 'body' | 'cardio' | 'stretch' | 'mental' | 'habits' | 'study' | 'reading' | 'meditation' | 'screentime'
+export type BuiltinTabId = 'money' | 'workout' | 'food' | 'sleep' | 'body' | 'cardio' | 'stretch' | 'mental' | 'study' | 'reading' | 'meditation' | 'screentime'
 
 // タブの識別子。Home / 組み込み / 動的メトリクスの3種
 // メトリクスは "metric:{metricId}" の形式で表現する
 export type TabType = 'home' | BuiltinTabId | `metric:${string}`
 
-export const BUILTIN_TAB_IDS: BuiltinTabId[] = ['money', 'workout', 'food', 'sleep', 'body', 'cardio', 'stretch', 'mental', 'habits', 'study', 'reading', 'meditation', 'screentime']
+export const BUILTIN_TAB_IDS: BuiltinTabId[] = ['money', 'workout', 'food', 'sleep', 'body', 'cardio', 'stretch', 'mental', 'study', 'reading', 'meditation', 'screentime']
 
 export interface TabConfig {
   // 組み込みなら id = BuiltinTabId、メトリクスなら id = "metric:{metricId}"
