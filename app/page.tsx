@@ -86,8 +86,10 @@ export default function AxisApp() {
     DEFAULT_WIDGET_CONFIG
   )
 
-  // 新しいウィジェットが追加された時にconfigを自動補完 (初回のみ)
+  // Widget config auto-fill — run once on mount, only if onboarded
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.localStorage.getItem('axis-onboarded') !== 'true') return
     setWidgetConfig(prev => {
       const known = new Set(prev.map(w => w.id))
       const missing = DEFAULT_WIDGET_CONFIG.filter(w => !known.has(w.id))
@@ -186,13 +188,13 @@ export default function AxisApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 一回だけの互換性 migration: v1 config (旧形式) と既存メトリクスから v2 を構築
-  // 初回マウント時のみ実行
+  // v1→v2 migration. 初回マウント時のみ。新規ユーザーは何もしない。
   useEffect(() => {
     if (typeof window === 'undefined') return
-    // 既にオンボード済みなら何もしない
     const storedOnboarded = window.localStorage.getItem('axis-onboarded')
     if (storedOnboarded === 'true') return
+    // 旧データが一切なければ新規ユーザー → 何もしない (オンボーディングに任せる)
+    if (!window.localStorage.getItem('axis-tab-config') && !window.localStorage.getItem('axis-tab-config-v2')) return
 
     const storedTabConfig = window.localStorage.getItem('axis-tab-config-v2')
     if (storedTabConfig) {
@@ -236,12 +238,13 @@ export default function AxisApp() {
   // 非表示タブ / 存在しないメトリクスタブをアクティブにした状態なら home に戻す
   // tabConfig or activeTab が変わった時のみ
   useEffect(() => {
+    if (!onboarded) return
     if (activeTab === 'home') return
     const conf = tabConfig.find(c => c.id === activeTab)
     if (conf && !conf.visible) {
       setActiveTab('home')
     }
-  }, [tabConfig, activeTab])
+  }, [tabConfig, activeTab, onboarded])
 
   // Reset scroll on tab change
   useEffect(() => {
@@ -255,8 +258,9 @@ export default function AxisApp() {
   reminderBodyRef.current = t.notifications.reminderBody
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.localStorage.getItem('axis-onboarded') !== 'true') return
     const hasRecordToday = () => {
-      if (typeof window === 'undefined') return true
       const today = new Date().toISOString().split('T')[0]
       const check = (key: string) => {
         try {
