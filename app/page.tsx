@@ -8,6 +8,7 @@ import { AppMain } from '@/components/axis/app-main'
 import { I18nContext, translations, type Locale } from '@/lib/i18n'
 import type { TabConfig, MetricDefinition } from '@/lib/types'
 import { BUILTIN_TAB_IDS, type BuiltinTabId } from '@/lib/types'
+import { contributeToTwin } from '@/lib/contribute'
 
 export default function Page() {
   const [onboarded, setOnboarded] = useLocalStorage<boolean>('axis-onboarded', false)
@@ -15,7 +16,6 @@ export default function Page() {
   const [locale, setLocale] = useLocalStorage<Locale>('axis-locale', 'ja')
   const t = translations[locale]
 
-  // マウント完了まで何も表示しない (フラッシュ防止)
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
 
@@ -44,19 +44,20 @@ export default function Page() {
     window.localStorage.setItem('axis-tab-config-v2', JSON.stringify([...builtinConfig, ...metricTabs]))
     window.localStorage.setItem('axis-onboarded', 'true')
     setOnboarded(true)
+    contributeToTwin('axis-life-tracker', {
+      visibleBuiltinTabs: builtinConfig.filter((t) => t.visible).map((t) => t.id),
+      customMetrics: createdMetrics.map((m) => ({ name: m.name, unit: m.unit ?? null })),
+    })
   }
 
-  // マウント前は空画面 (フラッシュ防止)
   if (!mounted) {
     return <div className="h-[100dvh] bg-background" />
   }
 
-  // ステージ1: 紹介スライド (初回のみ)
   if (!introSeen && !onboarded) {
     return <IntroSlides onComplete={() => setIntroSeen(true)} />
   }
 
-  // ステージ2: オンボーディング (項目選択)
   if (!onboarded) {
     return (
       <I18nContext.Provider value={i18nValue}>
@@ -65,6 +66,5 @@ export default function Page() {
     )
   }
 
-  // ステージ3: メインアプリ
   return <AppMain />
 }
